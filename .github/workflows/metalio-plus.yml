@@ -5,6 +5,10 @@ on:
     branches: [metalio-plus]
     paths:
       - "ports/metalio-plus/**"
+      - "platformio.ini"
+      - "freeink-sdk/**"
+      - "src/**"
+      - "lib/**"
       - ".github/workflows/metalio-plus.yml"
   workflow_dispatch:
 
@@ -73,3 +77,26 @@ jobs:
         with:
           name: CrossNext-Plus-Smoke-${{ github.run_number }}
           path: out/
+
+  # Compile-only: CrossNext for the ESP32-S31 (pioarduino develop, Arduino 4.0.0).
+  # Not flashable until the Plus profile and display driver replace the stand-in.
+  crossnext-probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install PlatformIO (pioarduino core)
+        run: pip install -U https://github.com/pioarduino/platformio-core/archive/refs/tags/v6.1.19.zip
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-plus-probe-${{ hashFiles('platformio.ini') }}
+      - name: Build metalio_plus_probe
+        run: pio run -e metalio_plus_probe 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+      - name: Size
+        if: always()
+        run: ls -l .pio/build/metalio_plus_probe/*.bin 2>/dev/null || true
