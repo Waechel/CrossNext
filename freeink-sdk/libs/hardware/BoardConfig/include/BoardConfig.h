@@ -86,13 +86,21 @@
 #include "MetalioEInk4Board.h"
 #endif
 
+// Metalio E-Ink4-Plus V1.5: ESP32-S31, 4.7" parallel E0470A14-AF (native 1216x684)
+// through EPDiy + TPS65185 + TCA9555, FT6336U touch, warm/cool frontlight. A
+// different board from the S3 SPI Metalio E-Ink 4.
+#ifndef FREEINK_DEVICE_METALIO_PLUS
+#define FREEINK_DEVICE_METALIO_PLUS 0
+#endif
+
 // --- 2) Coherence: exactly one MCU family, at least one device ---------------
 #if !(FREEINK_DEVICE_X4 || FREEINK_DEVICE_X3 || FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_M5 || \
       FREEINK_DEVICE_MURPHY || FREEINK_DEVICE_DELINK || FREEINK_DEVICE_LILYGO || FREEINK_DEVICE_M5PAPER ||               \
       FREEINK_DEVICE_STICKY || FREEINK_DEVICE_PAPERMONO || FREEINK_DEVICE_PAPERS3 || FREEINK_DEVICE_MURPHY_M4 ||         \
-      FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_ONEPAGE || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4)
+      FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_ONEPAGE || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4 || \
+      FREEINK_DEVICE_METALIO_PLUS)
 #error \
-    "FreeInk: no device selected. Pass at least one -DFREEINK_DEVICE_<NAME> (X4, X3, X4PRO, X4CLASSIC, M5, MURPHY, DELINK, LILYGO, M5PAPER, STICKY, PAPERMONO, PAPERS3, MURPHY_M4, EEGO_A4, ONEPAGE, WS397, METALIO_EINK4) in your build env — see platformio.sample.ini."
+    "FreeInk: no device selected. Pass at least one -DFREEINK_DEVICE_<NAME> (X4, X3, X4PRO, X4CLASSIC, M5, MURPHY, DELINK, LILYGO, M5PAPER, STICKY, PAPERMONO, PAPERS3, MURPHY_M4, EEGO_A4, ONEPAGE, WS397, METALIO_EINK4, METALIO_PLUS) in your build env — see platformio.sample.ini."
 #endif
 // Each device belongs to one MCU family; a binary targets exactly one. X3/X4 are
 // ESP32-C3; M5 PaperColor/Murphy/de-link/LilyGo are ESP32-S3; M5Paper v1.1 is the
@@ -105,9 +113,10 @@
    FREEINK_DEVICE_STICKY || FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_PAPERMONO ||  \
    FREEINK_DEVICE_PAPERS3 || FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4)
 #define FREEINK_MCU_ESP32 (FREEINK_DEVICE_M5PAPER)
-#if (FREEINK_MCU_C3 + FREEINK_MCU_C61 + FREEINK_MCU_S3 + FREEINK_MCU_ESP32) != 1
+#define FREEINK_MCU_S31 (FREEINK_DEVICE_METALIO_PLUS)
+#if (FREEINK_MCU_C3 + FREEINK_MCU_C61 + FREEINK_MCU_S3 + FREEINK_MCU_ESP32 + FREEINK_MCU_S31) != 1
 #error \
-    "FreeInk: all selected devices must share one MCU family — ESP32-C3 (X3/X4), ESP32-C61 (OnePage), ESP32-S3 (M5/Murphy/de-link/LilyGo/Sticky/X4Pro), or ESP32 (M5Paper). Build one binary per family."
+    "FreeInk: all selected devices must share one MCU family — ESP32-C3 (X3/X4), ESP32-C61 (OnePage), ESP32-S3 (M5/Murphy/de-link/LilyGo/Sticky/X4Pro), ESP32 (M5Paper), or ESP32-S31 (Metalio Plus). Build one binary per family."
 #endif
 
 // --- 3) Derive panel drivers from the device set -----------------------------
@@ -186,6 +195,11 @@
 #else
 #define FREEINK_DRIVER_IT8951 0
 #endif
+#if FREEINK_DEVICE_METALIO_PLUS
+#define FREEINK_DRIVER_METALIO_PLUS 1
+#else
+#define FREEINK_DRIVER_METALIO_PLUS 0
+#endif
 #if FREEINK_DEVICE_PAPERMONO
 #define FREEINK_DRIVER_PAPER_MONO 1
 #else
@@ -203,14 +217,14 @@
 #define FREEINK_CAP_TOUCH                                                                               \
   (FREEINK_DEVICE_MURPHY || FREEINK_DEVICE_LILYGO || FREEINK_DEVICE_M5PAPER || FREEINK_DEVICE_STICKY || \
    FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_PAPERMONO || FREEINK_DEVICE_PAPERS3 || FREEINK_DEVICE_MURPHY_M4 || \
-   FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_METALIO_EINK4)
+   FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_METALIO_EINK4 || FREEINK_DEVICE_METALIO_PLUS)
 #endif
 #ifndef FREEINK_CAP_FRONTLIGHT
 // EEGO A4's frontlight is an I2C LED driver (viaI2cLed), not LEDC PWM — the
 // FrontlightManager I2C backend drives it.
 #define FREEINK_CAP_FRONTLIGHT                                                                        \
   (FREEINK_DEVICE_DELINK || FREEINK_DEVICE_MURPHY || FREEINK_DEVICE_LILYGO || FREEINK_DEVICE_X4PRO || \
-   FREEINK_DEVICE_PAPERMONO || FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_EEGO_A4)
+   FREEINK_DEVICE_PAPERMONO || FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_METALIO_PLUS)
 #endif
 // Warm/cool color-temperature frontlight: a second warm PWM channel on top of
 // the brightness one (FrontlightConfig::gpioWarm). Sub-capability of
@@ -218,7 +232,8 @@
 // builds (Paper Mono, de-link, Murphy, LilyGo). Within a multi-device build
 // the profile's gpioWarm stays the runtime truth (hasColorTemperature()).
 #ifndef FREEINK_CAP_WARMLIGHT
-#define FREEINK_CAP_WARMLIGHT (FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_EEGO_A4)
+#define FREEINK_CAP_WARMLIGHT \
+  (FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_EEGO_A4 || FREEINK_DEVICE_METALIO_PLUS)
 #endif
 // USB Mass Storage ("USB Transfer" mode): exposes the SD card to a host over
 // USB-MSC. OPT-IN (default off), NOT board-derived, so a board enables it in
@@ -283,7 +298,7 @@
 #ifndef FREEINK_BATTERY_I2C_GAUGE
 #define FREEINK_BATTERY_I2C_GAUGE                                                            \
   (FREEINK_DEVICE_X3 || FREEINK_DEVICE_LILYGO || FREEINK_DEVICE_STICKY || FREEINK_DEVICE_X4PRO || \
-   FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4)
+   FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4 || FREEINK_DEVICE_METALIO_PLUS)
 #endif
 #ifndef FREEINK_CAP_COLOR
 #define FREEINK_CAP_COLOR (FREEINK_DEVICE_M5)
@@ -303,7 +318,7 @@
 #define FREEINK_CAP_RTC                                                                             \
   (FREEINK_DEVICE_X3 || FREEINK_DEVICE_STICKY || FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_X4CLASSIC || \
    FREEINK_DEVICE_PAPERMONO || FREEINK_DEVICE_PAPERS3 || FREEINK_DEVICE_LILYGO || FREEINK_DEVICE_EEGO_A4 || \
-   FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4)
+   FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4 || FREEINK_DEVICE_METALIO_PLUS)
 #endif
 #ifndef FREEINK_CAP_TEMP_HUMIDITY
 #define FREEINK_CAP_TEMP_HUMIDITY (FREEINK_DEVICE_STICKY)
@@ -353,7 +368,7 @@
 #ifndef FREEINK_SD_SDMMC
 #define FREEINK_SD_SDMMC                                                                            \
   (FREEINK_DEVICE_DELINK || FREEINK_DEVICE_X4PRO || FREEINK_DEVICE_X4CLASSIC || FREEINK_DEVICE_PAPERMONO || \
-   FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4)
+   FREEINK_DEVICE_MURPHY_M4 || FREEINK_DEVICE_WS397 || FREEINK_DEVICE_METALIO_EINK4 || FREEINK_DEVICE_METALIO_PLUS)
 #endif
 
 // Serial log transport hint for consumer firmware. Boards can share the same MCU
@@ -412,6 +427,7 @@ enum class Board : uint8_t {
   OnePage,    // OnePage: ESP32-C61, SSD1677 800x480 SPI panel, 4-key ADC ladder + 3 side keys
   WsEpaper397,  // Waveshare ESP32-S3-ePaper-3.97: SSD1677 800x480, 3 keys + BOOT, AXP2101 PMIC
   MetalioEInk4,  // ESP32-S3, GDEM0397T81, CST816S, TCA9555
+  MetalioPlus,   // ESP32-S31, parallel E0470A14-AF via EPDiy, FT6336U, TCA9555
 };
 
 // How the board reports button presses.
@@ -423,6 +439,7 @@ enum class InputStyle : uint8_t {
   DigitalFiveKey,           // 3 physical GPIO keys + synthesized events (Murphy M3)
   DigitalTwoButton,         // short up/down; holds synthesize back/confirm/power
   OnePageAdcLadder,         // OnePage: 4 front keys on GPIO4 ADC ladder + 3 side GPIO keys
+  MetalioPlusKeys,          // Metalio Plus: BOOT GPIO + TCA9555 power/volume + FT6336U cover keys
 };
 
 // Panel controller silicon. Drivers are selected from this at begin().
@@ -445,7 +462,8 @@ enum class DisplayController : uint8_t {
   IT8951 = 5,
   UC8279 = 6,
   UC8179 = 7,
-  UC8279C = 8  // EEGO A4 768x552 sibling of the UC8279 family (Uc8279cA4Driver)
+  UC8279C = 8,  // EEGO A4 768x552 sibling of the UC8279 family (Uc8279cA4Driver)
+  MetalioParallel = 9  // Metalio Plus raw-parallel panel driven by EPDiy (MetalioPlusDriver)
 };
 
 // Optional capacitive touch controller.
@@ -1888,6 +1906,56 @@ constexpr BoardProfile ONEPAGE = {
 static_assert(ONEPAGE.displayWidth / 8 * ONEPAGE.displayHeight == 48000,
               "OnePage framebuffer must be 48,000 bytes (800/8 x 480)");
 
+// Metalio E-Ink4-Plus V1.5 (ESP32-S31). Wiring from the vendor board config.h /
+// epd_board_metalio_eink4_plus.c as used by RickyOS-Plus (MIT). Native panel is
+// 1216x684 landscape; measured on hardware: holding the reader portrait with the
+// cover keys at the bottom, native (0,0) is top-right and native +x runs down.
+// All I2C parts (TPS65185, TCA9555, FT6336U, BQ27220, PCF8563, SC7A20H) share
+// one bus on SDA0/SCL1, owned by Wire1 at 100 kHz (the board layer's bus).
+constexpr BoardProfile makeMetalioPlusProfile() {
+  BoardProfile p = {};
+  p.board = Board::MetalioPlus;
+  p.name = "metalio_plus";
+  p.inputStyle = InputStyle::MetalioPlusKeys;
+  p.displayController = DisplayController::MetalioParallel;
+  p.displayWidth = 1216;
+  p.displayHeight = 684;
+  p.display = {PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED,
+               PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED};
+  p.displaySpiHz = 0;
+  p.sd = {PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, false, 0};
+  // BOOT/AI key is GPIO61 (active low) -> confirm. Power is TCA9555 P1.7 and the
+  // volume keys P1.0/P1.1; MetalioPlusKeys reads those through the board layer.
+  p.input = {PIN_UNASSIGNED, 61, PIN_UNASSIGNED, PIN_UNASSIGNED,
+             PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, false};
+  p.batteryAdc = PIN_UNASSIGNED;
+  p.batteryChargeStatus = PIN_UNASSIGNED;
+  p.batteryDividerMultiplier = 1.0f;
+  p.usbDetect = PIN_UNASSIGNED;
+  // FT6336U at 0x38, IRQ GPIO5, reset via TCA9555 P1.2 (board layer). Cover keys
+  // report at raw Y~1600 (outside the panel): X 100 home, 200 back/prev, 300 next.
+  p.touch = {TouchController::Ft6336u, 0, 1, 5, PIN_UNASSIGNED, 0x38,
+             false, 0, true, false};
+  p.touch.swapXY = true;
+  p.touch.flipY = true;
+  p.touch.hasHomeKey = true;
+  // YX6016N EN/PWM: cool GPIO6, warm GPIO7.
+  p.frontlight = {6, 20000, 10, true, 7};
+  p.audio = {AudioOutput::None, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED,
+             PIN_UNASSIGNED, true, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, 0, PIN_UNASSIGNED};
+  p.leds = {PIN_UNASSIGNED, 0, LedColorOrder::GRB, false};
+  p.orientation = {false, false};
+  p.sdmmc = {24, 25, 20, 21, 22, 23, 4};
+  p.batteryGauge = {0, 1, 100000, 0x55, 0, 1, GaugeType::Bq27220};
+  p.sensors = {0, 1, 100000, 0x51, 0, 0x19, 1, RtcType::Pcf8563, ImuType::Sc7a20h};
+  p.uiScale = 1.25f;
+  p.viewableInsets = {8, 8, 8, 8};
+  return p;
+}
+constexpr BoardProfile METALIO_PLUS = makeMetalioPlusProfile();
+static_assert(METALIO_PLUS.displayWidth / 8 * METALIO_PLUS.displayHeight == 103968,
+              "Metalio Plus framebuffer must be 103,968 bytes (1216/8 x 684)");
+
 // Largest framebuffer (bytes) over the devices compiled into this build, derived
 // from the profiles above. The display facade sizes its static framebuffer to
 // this so one binary holds whichever panel is runtime-selected; a single-device
@@ -1897,7 +1965,7 @@ constexpr uint32_t cmax(uint32_t a, uint32_t b) { return a > b ? a : b; }
 constexpr uint32_t panelBytes(const BoardProfile& p) {
   return static_cast<uint32_t>(p.displayWidth / 8) * p.displayHeight;
 }
-constexpr uint32_t MAX_FRAMEBUFFER_BYTES = cmax(
+constexpr uint32_t MAX_FRAMEBUFFER_BYTES_NON_PLUS = cmax(
     cmax(cmax(FREEINK_DEVICE_X4 ? panelBytes(XTEINK_X4) : 0u, FREEINK_DEVICE_X3 ? panelBytes(XTEINK_X3) : 0u),
          cmax(FREEINK_DEVICE_M5 ? panelBytes(M5STACK_PAPER_COLOR) : 0u,
               FREEINK_DEVICE_MURPHY ? panelBytes(MURPHY_M3) : 0u)),
@@ -1914,11 +1982,15 @@ constexpr uint32_t MAX_FRAMEBUFFER_BYTES = cmax(
                              FREEINK_DEVICE_ONEPAGE ? panelBytes(ONEPAGE) : 0u),
                         cmax(FREEINK_DEVICE_WS397 ? panelBytes(WS_EPAPER_397) : 0u,
                              FREEINK_DEVICE_METALIO_EINK4 ? panelBytes(METALIO_EINK4) : 0u))))));
+constexpr uint32_t MAX_FRAMEBUFFER_BYTES =
+    cmax(MAX_FRAMEBUFFER_BYTES_NON_PLUS, FREEINK_DEVICE_METALIO_PLUS ? panelBytes(METALIO_PLUS) : 0u);
 
 // Compile-time default device — the profile ACTIVE starts as. With a single
 // device in the build this is the only device; with several same-MCU devices it
 // is the boot default until the consumer calls selectDevice().
-#if FREEINK_DEVICE_METALIO_EINK4
+#if FREEINK_DEVICE_METALIO_PLUS
+constexpr BoardProfile DEFAULT_DEVICE = METALIO_PLUS;
+#elif FREEINK_DEVICE_METALIO_EINK4
 constexpr BoardProfile DEFAULT_DEVICE = METALIO_EINK4;
 #elif FREEINK_DEVICE_WS397
 constexpr BoardProfile DEFAULT_DEVICE = WS_EPAPER_397;
@@ -2050,6 +2122,11 @@ inline bool selectDevice(Board which) {
       ACTIVE = METALIO_EINK4;
       break;
 #endif
+#if FREEINK_DEVICE_METALIO_PLUS
+    case Board::MetalioPlus:
+      ACTIVE = METALIO_PLUS;
+      break;
+#endif
 #if FREEINK_DEVICE_WS397
     case Board::WsEpaper397:
       ACTIVE = WS_EPAPER_397;
@@ -2077,6 +2154,7 @@ inline bool isX4Classic() { return ACTIVE.board == Board::XteinkX4Classic; }
 inline bool isPaperMono() { return ACTIVE.board == Board::PaperMono; }
 inline bool isEegoA4() { return ACTIVE.board == Board::EegoA4; }
 inline bool isMetalioEInk4() { return ACTIVE.board == Board::MetalioEInk4; }
+inline bool isMetalioPlus() { return ACTIVE.board == Board::MetalioPlus; }
 inline bool isOnePage() { return ACTIVE.board == Board::OnePage; }
 inline bool isWsEpaper397() { return ACTIVE.board == Board::WsEpaper397; }
 inline bool hasTouch() { return ACTIVE.touch.controller != TouchController::None; }

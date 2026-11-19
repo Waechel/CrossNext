@@ -9,6 +9,8 @@ on:
       - "freeink-sdk/**"
       - "src/**"
       - "lib/**"
+      - "scripts/**"
+      - "scripts_local/**"
       - ".github/workflows/metalio-plus.yml"
   workflow_dispatch:
 
