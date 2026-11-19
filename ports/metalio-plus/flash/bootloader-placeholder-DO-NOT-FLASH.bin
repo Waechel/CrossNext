@@ -1,0 +1,2 @@
+NOT A BOOTLOADER. Placeholder so the Arduino build skips generating one.
+The Metalio Plus keeps its own bootloader (IDF 9a97f6c5 @0x2000); never flash this.
