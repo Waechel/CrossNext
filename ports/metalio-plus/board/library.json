@@ -2,12 +2,21 @@
   "name": "MetalioPlusBoard",
   "version": "0.1.0",
   "description": "Metalio E-Ink4-Plus V1.5 board layer: EPDiy parallel panel (E0470A14-AF) with TPS65185 + TCA9555 power, FT6336U touch helpers, waveforms. From RickyOS-Plus components/metalio_board (MIT, see LICENSE.vendor).",
-  "frameworks": ["arduino"],
-  "platforms": ["espressif32"],
+  "frameworks": [
+    "arduino"
+  ],
+  "platforms": [
+    "espressif32"
+  ],
   "build": {
     "srcDir": ".",
     "includeDir": ".",
-    "srcFilter": ["+<bus/>", "+<display/>", "+<sd_hold_stub.c>"],
+    "srcFilter": [
+      "+<bus/>",
+      "+<display/>",
+      "-<display/output_common/lut.S>",
+      "+<sd_hold_stub.c>"
+    ],
     "flags": [
       "-Wno-missing-field-initializers",
       "-DRICKYOS_PLUS_UI_WHITE_MAINTENANCE=1",
