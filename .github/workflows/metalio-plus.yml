@@ -1,0 +1,73 @@
+name: Metalio Plus build
+
+on:
+  push:
+    branches: [metalio-plus]
+    paths:
+      - "ports/metalio-plus/**"
+      - ".github/workflows/metalio-plus.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: metalio-plus-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Must match the bootloader on the device. Do not change without a full reflash plan.
+  IDF_COMMIT: 9a97f6c54ec638111ce55cd36581b3c192f15207
+  IDF_PATH: ${{ github.workspace }}/esp-idf
+  IDF_TOOLS_PATH: ${{ github.workspace }}/.espressif
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache ESP-IDF and tools
+        id: idf-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            esp-idf
+            .espressif
+          key: idf-${{ env.IDF_COMMIT }}-esp32s31-v1
+
+      - name: Fetch ESP-IDF ${{ env.IDF_COMMIT }}
+        if: steps.idf-cache.outputs.cache-hit != 'true'
+        run: |
+          git init esp-idf
+          cd esp-idf
+          git remote add origin https://github.com/espressif/esp-idf.git
+          git fetch --depth 1 origin "$IDF_COMMIT"
+          git checkout --detach FETCH_HEAD
+          git submodule update --init --recursive --depth 1 --jobs 8
+
+      - name: Install ESP-IDF tools for esp32s31
+        if: steps.idf-cache.outputs.cache-hit != 'true'
+        run: ./esp-idf/install.sh esp32s31
+
+      - name: Verify ESP-IDF revision
+        run: python3 ports/metalio-plus/ci/check_idf.py --idf "$IDF_PATH"
+
+      - name: Build smoke test
+        working-directory: ports/metalio-plus/smoke
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py set-target esp32s31
+          idf.py build
+
+      - name: Verify image
+        run: |
+          python3 ports/metalio-plus/ci/check_idf.py --idf "$IDF_PATH" \
+            --project-description ports/metalio-plus/smoke/build/project_description.json
+          python3 ports/metalio-plus/ci/check_image.py ports/metalio-plus/smoke/build/CrossNext-Plus-Smoke.bin
+          mkdir -p out
+          cp ports/metalio-plus/smoke/build/CrossNext-Plus-Smoke.bin out/CrossNext-Plus-Smoke-app1.bin
+          cp ports/metalio-plus/smoke/build/CrossNext-Plus-Smoke.elf out/
+          sha256sum out/*.bin | tee out/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CrossNext-Plus-Smoke-${{ github.run_number }}
+          path: out/
