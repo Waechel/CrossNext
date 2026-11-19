@@ -31,6 +31,17 @@
 #include <wolfssl/wolfcrypt/sha256.h>
 
 #if defined(ESP_PLATFORM)
+#include <esp_idf_version.h>
+#endif
+// ESP-IDF 6 ships Mbed TLS 4, which removed the public RSA/PK key-generation
+// API used below; there the wolfSSL path is used (as RickyOS-Plus does).
+#if defined(ESP_PLATFORM) && ESP_IDF_VERSION_MAJOR < 6
+#define FREEINK_CONTENT_MBEDTLS_RSA_KEYGEN 1
+#else
+#define FREEINK_CONTENT_MBEDTLS_RSA_KEYGEN 0
+#endif
+
+#if FREEINK_CONTENT_MBEDTLS_RSA_KEYGEN
 #include <mbedtls/esp_mbedtls_random.h>
 #include <mbedtls/pk.h>
 #include <mbedtls/rsa.h>
@@ -239,7 +250,7 @@ bool WolfsslCrypto::rsaGenerate(RsaKeyPairDer* out) {
     lastError = "rng not initialized";
     return false;
   }
-#if defined(ESP_PLATFORM)
+#if FREEINK_CONTENT_MBEDTLS_RSA_KEYGEN
   // wolfSSL 5.7.2's Tom's Fast Math key-generation path is unstable on the
   // ESP32-C3 (the Miller-Rabin test faults in fp_mul_comba). ESP-IDF already
   // ships mbedTLS with RSA key generation enabled, so use it for this one
