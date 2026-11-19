@@ -66,6 +66,7 @@ jobs:
           mkdir -p out
           cp ports/metalio-plus/smoke/build/CrossNext-Plus-Smoke.bin out/CrossNext-Plus-Smoke-app1.bin
           cp ports/metalio-plus/smoke/build/CrossNext-Plus-Smoke.elf out/
+          cp ports/metalio-plus/flash/otadata-app1.bin ports/metalio-plus/flash/otadata-app0.bin out/
           sha256sum out/*.bin | tee out/SHA256SUMS.txt
 
       - uses: actions/upload-artifact@v4
