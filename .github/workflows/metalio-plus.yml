@@ -80,9 +80,8 @@ jobs:
           name: CrossNext-Plus-Smoke-${{ github.run_number }}
           path: out/
 
-  # Compile-only: CrossNext for the ESP32-S31 (pioarduino develop, Arduino 4.0.0).
-  # Not flashable until the Plus profile and display driver replace the stand-in.
-  crossnext-probe:
+  # CrossNext for the Metalio Plus (pioarduino develop, Arduino 4.0.0, IDF v6.1.1).
+  crossnext:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -96,11 +95,20 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.platformio
-          key: pio-plus-probe-${{ hashFiles('platformio.ini') }}
-      - name: Build metalio_plus_probe
+          key: pio-plus-${{ hashFiles('platformio.ini') }}
+      - name: Build metalio_plus
         env:
           SCONSFLAGS: -k
-        run: pio run -e metalio_plus_probe 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
-      - name: Size
-        if: always()
-        run: ls -l .pio/build/metalio_plus_probe/*.bin 2>/dev/null || true
+        run: pio run -e metalio_plus 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+      - name: Verify image
+        run: |
+          python3 ports/metalio-plus/ci/check_image.py .pio/build/metalio_plus/firmware.bin
+          mkdir -p out
+          cp .pio/build/metalio_plus/firmware.bin out/CrossNext-Plus-app1.bin
+          cp .pio/build/metalio_plus/firmware.elf out/CrossNext-Plus.elf
+          cp ports/metalio-plus/flash/otadata-app1.bin ports/metalio-plus/flash/otadata-app0.bin out/
+          sha256sum out/*.bin | tee out/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CrossNext-Plus-${{ github.run_number }}
+          path: out/
