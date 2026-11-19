@@ -1,6 +1,7 @@
 # Metalio E-Ink4-Plus port — working notes
 
-Status: **stage 1 passed on hardware** (2026-11-19). Smoke test built in CI booted from
+Status: **stage 2 builds** (2026-11-20): CrossNext compiles and links for the Plus
+(`env:metalio_plus`, 7.49 MB). Not yet flashed. Stage 1 passed on hardware (2026-11-19). Smoke test built in CI booted from
 app1 under the device bootloader, TPS65185 rails up (`tps_ok=1`), full GC16 pattern drawn,
 stable for minutes.
 
@@ -66,3 +67,21 @@ RickyOS `codex/plus-reading-stats-recovery`, `ports/metalio-e-ink4-plus/firmware
 5. SDCardManager: `FREEINK_MCU_S3 || FREEINK_MCU_ESP32` guards at lines ~166/183 must
    include S31 for SDMMC.
 6. platformio env `metalio_plus` + CI job building it.
+
+## Stage 2 build notes (2026-11-20)
+
+- pioarduino develop needs pioarduino core >= 6.2 (`v6.2.0.post1`).
+- Arduino 4.0.0 has no prebuilt `dio_opi` libs for the S31 → `custom_sdkconfig` hybrid rebuild
+  (DIO flash, octal PSRAM 200 MHz, OpenThread/802.15.4 off, `esp_modem` removed,
+  `CONFIG_ESP_SLEEP_GPIO_RESET_WORKAROUND=y` for `esp_sleep_config_gpio_isolate`).
+- No prebuilt DIO bootloader either: `board_build.variants_dir = ports/metalio-plus/variants`
+  carries a text placeholder `bootloader.bin` so the build skips it. Never flash it.
+- The S31 reference board's USB `extra_flags` clash with base; overridden.
+- Code fixes: PowerManager deep-sleep hold guard, SHA-256 via PSA (`src/util/Sha256Compat.h`),
+  WolfsslCrypto mbedTLS keygen only below IDF 6, QRCode C23 `bool`, board tag `metalio_plus`,
+  Xtensa-only `lut.S` excluded from the board library.
+- Size: 7.49 MB > stock app1 (6.25 MiB). `partitions-large-app1.csv` (option B) folds the
+  unused spiffs into app1 (9.6 MiB), app0/RickyOS unchanged. Neither RickyOS's port code nor
+  CrossNext opens spiffs; its 1.17 MB of data is likely stock-firmware leftovers.
+  Awaiting the user's choice between B and trimming (option A).
+- Bring-up caps: touch, IMU, USB MSC off. With touch off only BOOT (confirm) works.
