@@ -96,6 +96,8 @@ jobs:
           path: ~/.platformio
           key: pio-plus-probe-${{ hashFiles('platformio.ini') }}
       - name: Build metalio_plus_probe
+        env:
+          SCONSFLAGS: -k
         run: pio run -e metalio_plus_probe 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
       - name: Size
         if: always()

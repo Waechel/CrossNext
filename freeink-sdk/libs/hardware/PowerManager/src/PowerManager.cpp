@@ -141,7 +141,9 @@ void PowerManager::deepSleepUntilPowerButtonOrTimer(const uint64_t micros) {
 
 void PowerManager::deepSleep() {
   esp_sleep_config_gpio_isolate();
-#if !FREEINK_MCU_C61
+  // Chips that hold single IOs through deep sleep (C61, S31) have no global
+  // gpio_deep_sleep_hold_en(); per-pin gpio_hold_en() calls already apply.
+#if !SOC_GPIO_SUPPORT_HOLD_SINGLE_IO_IN_DSLP
   gpio_deep_sleep_hold_en();
 #endif
   esp_deep_sleep_start();
