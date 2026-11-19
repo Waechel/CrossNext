@@ -107,6 +107,7 @@ jobs:
           cp .pio/build/metalio_plus/firmware.bin out/CrossNext-Plus-app1.bin
           cp .pio/build/metalio_plus/firmware.elf out/CrossNext-Plus.elf
           cp ports/metalio-plus/flash/otadata-app1.bin ports/metalio-plus/flash/otadata-app0.bin out/
+          cp .pio/build/metalio_plus/partitions.bin out/partition-table-large-app1.bin
           sha256sum out/*.bin | tee out/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:

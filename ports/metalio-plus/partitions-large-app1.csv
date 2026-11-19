@@ -1,0 +1,10 @@
+# Metalio E-Ink4-Plus, option B: RickyOS-Plus layout with the unused spiffs
+# partition folded into app1. app0 (RickyOS) keeps its offset and size, so it
+# still boots. Writing this table to 0x8000 is a one-time change; restore the
+# full flash backup to undo it.
+# Name,   Type, SubType,  Offset,   Size, Flags
+nvs,      data, nvs,      0x9000,   0x5000,
+otadata,  data, ota,      0xe000,   0x2000,
+app0,     app,  ota_0,    0x10000,  0x640000,
+app1,     app,  ota_1,    0x650000, 0x9a0000,
+coredump, data, coredump, 0xff0000, 0x10000,

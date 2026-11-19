@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 APP_SLOT_SIZE = 0x640000  # app0/app1 on the RickyOS-Plus partition table
+LARGE_APP1_SIZE = 0x9A0000  # app1 in partitions-large-app1.csv
 ESP32S31_CHIP_ID = 32
 
 
@@ -17,9 +18,10 @@ def main() -> int:
     if chip != ESP32S31_CHIP_ID:
         print(f"image chip id {chip}, expected {ESP32S31_CHIP_ID} (ESP32-S31)", file=sys.stderr)
         return 1
-    if len(data) > APP_SLOT_SIZE:
-        print(f"image is {len(data)} bytes, app slot holds {APP_SLOT_SIZE}", file=sys.stderr)
+    if len(data) > LARGE_APP1_SIZE:
+        print(f"image is {len(data)} bytes, even the large app1 holds {LARGE_APP1_SIZE}", file=sys.stderr)
         return 1
+    fits_stock = len(data) <= APP_SLOT_SIZE
     desc = data[0x20:0x120]
     magic = struct.unpack("<I", desc[:4])[0]
     version = desc[16:48].split(b"\0")[0].decode(errors="replace")
@@ -28,8 +30,10 @@ def main() -> int:
     if magic != 0xABCD5432:
         print("missing app descriptor", file=sys.stderr)
         return 1
-    print(f"OK: {project} {version}, IDF {idf}, {len(data)} bytes "
-          f"({100 * len(data) / APP_SLOT_SIZE:.1f}% of app slot), chip ESP32-S31")
+    print(f"OK: {project} {version}, IDF {idf}, {len(data)} bytes, chip ESP32-S31; "
+          f"{100 * len(data) / APP_SLOT_SIZE:.1f}% of stock app1, "
+          f"{100 * len(data) / LARGE_APP1_SIZE:.1f}% of large app1 -> "
+          + ("fits the stock layout" if fits_stock else "NEEDS partitions-large-app1"))
     return 0
 
 
