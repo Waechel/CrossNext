@@ -85,3 +85,16 @@ RickyOS `codex/plus-reading-stats-recovery`, `ports/metalio-e-ink4-plus/firmware
   CrossNext opens spiffs; its 1.17 MB of data is likely stock-firmware leftovers.
   Awaiting the user's choice between B and trimming (option A).
 - Bring-up caps: touch, IMU, USB MSC off. With touch off only BOOT (confirm) works.
+
+## 2026-11-20: first CrossNext UI on the Plus (build 41)
+
+Root cause of the EPDiy line-buffer underrun (fault 0x01a40001, row 420, every
+refresh incl. a boot self-test): Arduino's IDF config has CONFIG_ESP_ENABLE_PVT
+off. The smoke app (IDF defaults) has it on. Without PVT, internal RAM read at
+253 MB/s vs 422 MB/s in the smoke app (same CPU clock, both cores, before panel
+init), so the render workers fell behind the LCD. Code placement, cache config,
+interrupts and EPDiy buffers were all identical. Fix: CONFIG_ESP_ENABLE_PVT=y in
+[env:metalio_plus] custom_sdkconfig.
+
+Still to tidy: the stack-check/heap-poisoning overrides did not take; diag task
+and boot self-test/bench can be removed once stable.
