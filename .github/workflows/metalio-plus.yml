@@ -64,6 +64,12 @@ jobs:
           idf.py --preview set-target esp32s31
           idf.py --preview build
 
+      - name: Dump hardware config (smoke)
+        run: grep -E "^CONFIG_(SPIRAM|CACHE|CPU_FREQ|FLASHMODE|FLASHFREQ|ESPTOOLPY_FLASH|LCD_|XIP|FREERTOS_HZ|FREERTOS_UNICORE|COMPILER_OPTIM|MMU_PAGE|PSRAM|IRAM)" ports/metalio-plus/smoke/build/config/sdkconfig.h ports/metalio-plus/smoke/sdkconfig 2>/dev/null | sed 's/^/smoke: /' | sort -u | tee smoke-config.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smoke-config-${{ github.run_number }}
+          path: smoke-config.txt
       - name: Verify image
         run: |
           python3 ports/metalio-plus/ci/check_idf.py --idf "$IDF_PATH" \
@@ -100,6 +106,13 @@ jobs:
         env:
           SCONSFLAGS: -k
         run: pio run -e metalio_plus 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+      - name: Dump hardware config (crossnext)
+        if: always()
+        run: |
+          ls sdkconfig* .pio/build/metalio_plus/config 2>/dev/null || true
+          for f in sdkconfig.metalio_plus .pio/build/metalio_plus/config/sdkconfig.h; do
+            [ -f "$f" ] && grep -E "^(#define )?CONFIG_(SPIRAM|CACHE|CPU_FREQ|FLASHMODE|FLASHFREQ|ESPTOOLPY_FLASH|LCD_|XIP|FREERTOS_HZ|FREERTOS_UNICORE|COMPILER_OPTIM|MMU_PAGE|PSRAM|IRAM)" "$f" | sed "s|^|crossnext($f): |"
+          done | sort -u
       - name: Verify image
         run: |
           python3 ports/metalio-plus/ci/check_image.py .pio/build/metalio_plus/firmware.bin
