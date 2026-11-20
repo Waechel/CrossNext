@@ -143,6 +143,24 @@ EpdFont ui12RegularFont(&ubuntu_12_regular);
 EpdFont ui12BoldFont(&ubuntu_12_bold);
 EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
 
+#if FREEINK_DEVICE_METALIO_PLUS
+#include <builtinFonts/ubuntu_14_bold.h>
+#include <builtinFonts/ubuntu_14_regular.h>
+#include <builtinFonts/ubuntu_16_bold.h>
+#include <builtinFonts/ubuntu_16_regular.h>
+#include <builtinFonts/ubuntu_18_bold.h>
+#include <builtinFonts/ubuntu_18_regular.h>
+EpdFont ui14RegularFont(&ubuntu_14_regular);
+EpdFont ui14BoldFont(&ubuntu_14_bold);
+EpdFontFamily ui14FontFamily(&ui14RegularFont, &ui14BoldFont);
+EpdFont ui16RegularFont(&ubuntu_16_regular);
+EpdFont ui16BoldFont(&ubuntu_16_bold);
+EpdFontFamily ui16FontFamily(&ui16RegularFont, &ui16BoldFont);
+EpdFont ui18RegularFont(&ubuntu_18_regular);
+EpdFont ui18BoldFont(&ubuntu_18_bold);
+EpdFontFamily ui18FontFamily(&ui18RegularFont, &ui18BoldFont);
+#endif
+
 // Preserve an unattended timer wake across an aborted sleep entry.
 RTC_NOINIT_ATTR uint32_t unattendedWakeMagic;
 constexpr uint32_t UNATTENDED_WAKE_MAGIC = 0x0FF1A3E7;
@@ -742,6 +760,11 @@ void setupDisplayAndFonts(bool seamless = false) {
   renderer.setFontCacheManager(&fontCacheManager);
   renderer.insertFont(UI_10_FONT_ID, ui10FontFamily);
   renderer.insertFont(UI_12_FONT_ID, ui12FontFamily);
+#if FREEINK_DEVICE_METALIO_PLUS
+  renderer.insertFont(UI_14_FONT_ID, ui14FontFamily);
+  renderer.insertFont(UI_16_FONT_ID, ui16FontFamily);
+  renderer.insertFont(UI_18_FONT_ID, ui18FontFamily);
+#endif
   renderer.insertFont(SMALL_FONT_ID, smallFontFamily);
 
   // Discover and load SD card fonts

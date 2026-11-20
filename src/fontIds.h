@@ -12,6 +12,10 @@
 #define UI_10_FONT_ID (1322569422)
 #define UI_12_FONT_ID (1831230762)
 #define SMALL_FONT_ID (1465627787)
+// Larger Ubuntu UI tiers (Metalio Plus "Interface text size" setting).
+#define UI_14_FONT_ID (1402837215)
+#define UI_16_FONT_ID (1557204831)
+#define UI_18_FONT_ID (1689421375)
 
 // Font ID 0 is reserved as the "not found" sentinel.
 // Guard against any hash accidentally producing 0.

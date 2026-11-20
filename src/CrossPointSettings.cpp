@@ -577,3 +577,11 @@ int CrossPointSettings::getReaderFontId() const {
   // Ubuntu is always resident and can render without a card font.
   return UI_12_FONT_ID;
 }
+
+int uiTextSizeTier() {
+#if FREEINK_DEVICE_METALIO_PLUS
+  return SETTINGS.uiTextSize > 3 ? 3 : SETTINGS.uiTextSize;
+#else
+  return 0;
+#endif
+}

@@ -401,6 +401,8 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   // Focus Reading - emphasizes the first part of words with bold
   uint8_t focusReadingEnabled = 0;
   uint8_t readerMenuStyle = READER_MENU_LIST;
+  // Interface text size tier (Metalio Plus): 0 Small .. 3 Extra large.
+  uint8_t uiTextSize = 1;
   uint8_t readerTextTrigger = uint8_t(readertext::MenuTrigger::SwipeUp);
   // SD card font family name (empty = use built-in fontFamily)
   char sdFontFamilyName[32] = "Noto Serif";

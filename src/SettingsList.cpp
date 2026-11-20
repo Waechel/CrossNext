@@ -50,6 +50,12 @@ void forEachBaseSetting(SettingVisitor visit, void* context) {
   }();
 
   // --- Display ---
+#if FREEINK_DEVICE_METALIO_PLUS
+  emit(SettingInfo::Enum(StrId::STR_UI_TEXT_SIZE, &CrossPointSettings::uiTextSize,
+                         {StrId::STR_UI_TEXT_SIZE_SMALL, StrId::STR_UI_TEXT_SIZE_MEDIUM, StrId::STR_UI_TEXT_SIZE_LARGE,
+                          StrId::STR_UI_TEXT_SIZE_XLARGE},
+                         "uiTextSize", StrId::STR_CAT_DISPLAY));
+#endif
   emit(SettingInfo::StaticEnum(StrId::STR_SLEEP_SCREEN, &CrossPointSettings::sleepScreen, sleepScreenValues,
                                "sleepScreen", StrId::STR_CAT_DISPLAY));
   emit(SettingInfo::Enum(StrId::STR_SLEEP_COVER_MODE, &CrossPointSettings::sleepScreenCoverMode,
