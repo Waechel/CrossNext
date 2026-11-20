@@ -15,6 +15,7 @@ extern "C" {
 #include <config.h>
 #include <epd_board_metalio_eink4_plus.h>
 #include <plus_i2c_wire.h>
+extern char g_metalio_plus_selftest[96];
 }
 
 namespace metalio_plus {
@@ -68,8 +69,9 @@ void scanBus() {
 // The serial monitor usually attaches after boot; repeat the bring-up summary
 // for the first two minutes so it is always captured. 4 KB stack, then exits.
 void diagTask(void*) {
-  for (int i = 0; i < 6; ++i) {
-    vTaskDelay(pdMS_TO_TICKS(20000));
+  for (int i = 0; i < 10; ++i) {
+    vTaskDelay(pdMS_TO_TICKS(i == 0 ? 8000 : 15000));
+    ESP_LOGE("PLUS", "diag %s", g_metalio_plus_selftest);
     ESP_LOGE("PLUS", "diag: early bus %s | %s | TCA9555 %s | TPS65185 %s | keys mask 0x%02X | CPU %u MHz | heap %u, PSRAM %u",
             s_earlyOk ? "ok" : "FAILED", s_scanSummary,
             s_keysReady ? "ok" : "MISSING", epd_board_metalio_eink4_plus_tps_ok() ? "ok" : "not ready", s_lastMask,

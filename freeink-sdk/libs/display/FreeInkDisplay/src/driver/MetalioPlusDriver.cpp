@@ -14,6 +14,7 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 
+#include <cstdio>
 #include <cstring>
 
 #include "MetalioPlusDriver.h"
@@ -24,6 +25,11 @@ extern "C" {
 #include <epdiy.h>
 #include <metalio_epd.h>
 }
+
+extern "C" uint32_t epd_lcd_get_first_fault(void);
+// Read by the board diag task, which repeats it after the serial monitor attaches.
+extern "C" char g_metalio_plus_selftest[96];
+char g_metalio_plus_selftest[96] = "selftest not run";
 
 namespace freeink {
 namespace {
@@ -80,7 +86,10 @@ void finishOverlayMsb(const uint8_t* base, const uint8_t* msb, size_t srcBytes, 
 // failures later means runtime contention; failure here means build/link.
 void bootSelfTest() {
   EpdiyHighlevelState* hl = MetalioEpd_Hl();
-  if (!hl || !hl->front_fb) return;
+  if (!hl || !hl->front_fb) {
+    snprintf(g_metalio_plus_selftest, sizeof(g_metalio_plus_selftest), "selftest skipped (no framebuffer)");
+    return;
+  }
   uint8_t* fb = epd_hl_get_framebuffer(hl);
   epd_hl_set_all_white(hl);
   const int w = epd_width(), h = epd_height();
@@ -98,8 +107,10 @@ void bootSelfTest() {
   const EpdDrawError err = epd_hl_update_screen_full(hl, MODE_GC16, 25);
   const int64_t t1 = esp_timer_get_time();
   epd_poweroff();
-  ESP_LOGE(TAG, "diag selftest (smoke pattern, core %d) result=0x%x ms=%lld", xPortGetCoreID(),
-           static_cast<unsigned>(err), static_cast<long long>((t1 - t0) / 1000));
+  snprintf(g_metalio_plus_selftest, sizeof(g_metalio_plus_selftest),
+           "selftest core %d result=0x%x ms=%lld fault=0x%08lx", xPortGetCoreID(), static_cast<unsigned>(err),
+           static_cast<long long>((t1 - t0) / 1000), static_cast<unsigned long>(epd_lcd_get_first_fault()));
+  ESP_LOGE(TAG, "diag %s", g_metalio_plus_selftest);
 }
 
 // epd_init() allocates the LCD peripheral interrupts on the calling core. The
