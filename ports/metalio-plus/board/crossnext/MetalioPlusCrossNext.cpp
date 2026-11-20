@@ -23,6 +23,7 @@ constexpr uint32_t kKeyPollMs = 15;  // the hook runs every input update; cap th
 uint8_t s_lastMask = 0;
 uint32_t s_lastPollMs = 0;
 bool s_keysReady = false;
+bool s_earlyOk = false;
 
 uint8_t keyHook() {
   if (!s_keysReady) return 0;
@@ -68,7 +69,8 @@ void scanBus() {
 void diagTask(void*) {
   for (int i = 0; i < 6; ++i) {
     vTaskDelay(pdMS_TO_TICKS(20000));
-    LOG_INF("PLUS", "diag: %s | TCA9555 %s | TPS65185 %s | keys mask 0x%02X | heap %u, PSRAM %u", s_scanSummary,
+    LOG_INF("PLUS", "diag: early bus %s | %s | TCA9555 %s | TPS65185 %s | keys mask 0x%02X | heap %u, PSRAM %u",
+            s_earlyOk ? "ok" : "FAILED", s_scanSummary,
             s_keysReady ? "ok" : "MISSING", epd_board_metalio_eink4_plus_tps_ok() ? "ok" : "not ready", s_lastMask,
             static_cast<unsigned>(ESP.getFreeHeap()), static_cast<unsigned>(ESP.getFreePsram()));
   }
@@ -76,6 +78,13 @@ void diagTask(void*) {
 }
 
 }  // namespace
+
+bool earlyBegin() {
+  const bool ok = epd_board_metalio_eink4_plus_early_bus_init();
+  // Serial may not be attached yet; diagTask repeats the outcome later.
+  s_earlyOk = ok;
+  return ok;
+}
 
 void begin() {
   if (plus_i2c_begin() != ESP_OK) {

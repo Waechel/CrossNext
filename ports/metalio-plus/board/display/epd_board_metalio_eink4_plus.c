@@ -993,3 +993,23 @@ const EpdBoardDefinition epd_board_metalio_eink4_plus = {
     .gpio_read = NULL,
     .gpio_write = NULL,
 };
+
+/* CrossNext addition: bring the shared I2C bus and the TCA9555 up before any
+ * other driver (RTC, gauge) starts Wire1. epd_board_init() only recovers a
+ * stuck bus when Wire1 is not yet running, so in CrossNext, where those drivers
+ * start first, the recovery never ran and a TCA left mid-transaction by a reset
+ * kept the whole bus NACKing (seen on hardware, 2026-11-20). Retries as
+ * RickyOS-Plus PlusBoard::begin() does. */
+bool epd_board_metalio_eink4_plus_early_bus_init(void) {
+    epd_board_metalio_eink4_plus_boot_release_holds();
+    if (!plus_i2c_initialized()) recover_i2c_bus_pins();
+    bool bus = false;
+    bool io = false;
+    for (int attempt = 0; attempt < 3 && !(bus && io); ++attempt) {
+        if (attempt) vTaskDelay(pdMS_TO_TICKS(20));
+        bus = plus_i2c_begin() == ESP_OK;
+        io = bus && epd_board_metalio_eink4_plus_safe_io_init();
+        if (!(bus && io)) ESP_LOGE(TAG, "early bus init attempt %d failed (bus=%d io=%d)", attempt + 1, bus, io);
+    }
+    return bus && io;
+}

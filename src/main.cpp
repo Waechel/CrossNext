@@ -751,6 +751,10 @@ void setupDisplayAndFonts(bool seamless = false) {
 }
 
 void setup() {
+#if FREEINK_DEVICE_METALIO_PLUS
+  // Before anything else touches Wire1 (RTC, gauge): see MetalioPlusCrossNext.h.
+  metalio_plus::earlyBegin();
+#endif
   BoardConfig::holdPowerRails();
 
 #ifdef ENABLE_SERIAL_LOG

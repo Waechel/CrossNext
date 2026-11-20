@@ -157,3 +157,7 @@ void epd_board_metalio_eink4_plus_pwr_key_pulse_train(void);
 extern "C"
 #endif
 bool epd_board_metalio_eink4_plus_safe_io_init(void);
+
+/** CrossNext: recover the shared bus, start Wire1 and init the TCA9555 (3 tries).
+ *  Call first in setup(), before any other Wire1 user. */
+bool epd_board_metalio_eink4_plus_early_bus_init(void);
