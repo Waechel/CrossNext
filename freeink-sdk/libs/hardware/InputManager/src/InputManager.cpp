@@ -2131,8 +2131,23 @@ static bool m4NativeBegin(const int sda, const int scl, const uint8_t address) {
 }  // namespace
 #endif  // FREEINK_DEVICE_MURPHY_M4
 
+#if FREEINK_DEVICE_METALIO_PLUS
+// Board glue (ports/metalio-plus/board/crossnext): the FT6336U shares the
+// panel-power I2C bus, which the board layer owns, and resets via the TCA9555.
+extern "C" bool metalio_plus_touch_begin(void);
+extern "C" bool metalio_plus_touch_read(uint8_t reg, uint8_t* buf, size_t len);
+extern "C" bool metalio_plus_touch_irq_active(void);
+extern "C" void metalio_plus_touch_key(int rawX, bool down);
+extern "C" bool metalio_plus_touch_key_active(void);
+#endif
+
 void InputManager::beginFt6336u() {
   const auto& t = BoardConfig::ACTIVE.touch;
+#if FREEINK_DEVICE_METALIO_PLUS
+  (void)t;
+  touchDataEnabled = metalio_plus_touch_begin();
+  return;
+#endif
 
   if (t.powerEnable >= 0) {
     gpio_hold_dis(static_cast<gpio_num_t>(t.powerEnable));
@@ -2208,12 +2223,37 @@ void InputManager::pollFt6336u(const unsigned long now) {
   if (irq >= 0 && digitalRead(irq) != LOW && !touchPressed) return;
 #endif
 
+#if FREEINK_DEVICE_METALIO_PLUS
+  if (!metalio_plus_touch_irq_active() && !touchPressed && !metalio_plus_touch_key_active()) return;
+#endif
+
   if (now < touchReadAt) return;
   touchReadAt = now + TOUCH_SAMPLE_DELAY_MS;
 
   uint8_t data[16] = {};
   bool gotData = false;
-#if FREEINK_DEVICE_MURPHY_M4
+#if FREEINK_DEVICE_METALIO_PLUS
+  {
+    uint8_t frame[5] = {};
+    gotData = metalio_plus_touch_read(0x02, frame, sizeof(frame));
+    if (gotData) {
+      for (int i = 0; i < 5; ++i) data[2 + i] = frame[i];
+      const uint8_t points = data[2] & 0x0F;
+      const uint8_t ev = (data[3] >> 6) & 0x03;
+      const uint16_t rx = (static_cast<uint16_t>(data[3] & 0x0F) << 8) | data[4];
+      const uint16_t ry = (static_cast<uint16_t>(data[5] & 0x0F) << 8) | data[6];
+      if (points > 0 && ev != 1 && ry >= 1400 && ry < 1800) {
+        // Cover key below the panel: a key, never a screen touch.
+        metalio_plus_touch_key(rx, true);
+        return;
+      }
+      if (metalio_plus_touch_key_active()) {
+        metalio_plus_touch_key(-1, false);
+        if (points == 0 || ev == 1) return;
+      }
+    }
+  }
+#elif FREEINK_DEVICE_MURPHY_M4
   uint8_t nativeFrame[11] = {};
   gotData = m4NativeRead(0x02, nativeFrame, sizeof(nativeFrame));
   if (gotData) {

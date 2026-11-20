@@ -31,23 +31,30 @@ uint32_t s_lastPollMs = 0;
 bool s_keysReady = false;
 bool s_earlyOk = false;
 
+// Cover keys under the panel are FT6336U touch points reported off-panel
+// (raw Y ~1600). InputManager's Plus touch path calls metalio_plus_touch_key().
+volatile uint8_t s_touchKeyMask = 0;
+volatile int s_lastTouchKeyX = -1;
+
 uint8_t keyHook() {
-  if (!s_keysReady) return 0;
+  if (!s_keysReady) return s_touchKeyMask;
   const uint32_t now = millis();
-  if (s_lastPollMs != 0 && now - s_lastPollMs < kKeyPollMs) return s_lastMask;
+  if (s_lastPollMs != 0 && now - s_lastPollMs < kKeyPollMs) return s_lastMask | s_touchKeyMask;
   s_lastPollMs = now;
   uint8_t port1 = 0xFF;
-  if (!epd_board_metalio_eink4_plus_ioexp_read_port(1, &port1)) return s_lastMask;
+  if (!epd_board_metalio_eink4_plus_ioexp_read_port(1, &port1)) return s_lastMask | s_touchKeyMask;
   uint8_t mask = 0;
   // Port 1 bit n = TCA P1.n = board IO 8+n. Pressed = 0.
-  if (!(port1 & (1u << (EPD_IO_VOL_UP - 8)))) mask |= 1u << InputManager::BTN_UP;
-  if (!(port1 & (1u << (EPD_IO_VOL_DOWN - 8)))) mask |= 1u << InputManager::BTN_DOWN;
-  // Power acts as BACK during bring-up: there is no Plus wake path yet, and
-  // BTN_POWER would request sleep (which restarts the Plus for now).
-  if (!(port1 & (1u << (EPD_IO_POWER - 8)))) mask |= 1u << InputManager::BTN_BACK;
+  // CrossNext moves list selection with LEFT/RIGHT (the X4 front pair); UP/DOWN
+  // are the configurable side keys (page jumps), so volume maps to LEFT/RIGHT.
+  if (!(port1 & (1u << (EPD_IO_VOL_UP - 8)))) mask |= 1u << InputManager::BTN_LEFT;
+  if (!(port1 & (1u << (EPD_IO_VOL_DOWN - 8)))) mask |= 1u << InputManager::BTN_RIGHT;
+  // Power selects. BTN_POWER would request sleep, which only restarts the Plus
+  // until a wake path exists.
+  if (!(port1 & (1u << (EPD_IO_POWER - 8)))) mask |= 1u << InputManager::BTN_CONFIRM;
   if (mask != s_lastMask) ESP_LOGE("PLUS", "diag keys port1=0x%02X mask=0x%02X", port1, mask);
   s_lastMask = mask;
-  return mask;
+  return mask | s_touchKeyMask;
 }
 
 char s_scanSummary[160] = "not scanned";
@@ -111,3 +118,40 @@ void begin() {
 }
 
 }  // namespace metalio_plus
+
+// --- Touch glue for InputManager (FREEINK_DEVICE_METALIO_PLUS) ---------------
+extern "C" bool metalio_plus_touch_begin(void) {
+  pinMode(TOUCH_INT_PIN, INPUT_PULLUP);
+  epd_board_metalio_eink4_plus_tp_reset();
+  uint8_t chip = 0, fw = 0;
+  const bool ok = plus_i2c_read(TOUCH_I2C_ADDR, 0xA3, &chip, 1) == ESP_OK;
+  plus_i2c_read(TOUCH_I2C_ADDR, 0xA6, &fw, 1);
+  if (ok) {
+    const uint8_t intMode = 0x00;  // INT held low while touched
+    plus_i2c_write(TOUCH_I2C_ADDR, 0xA4, &intMode, 1);
+  }
+  ESP_LOGE("PLUS", "diag touch FT6336U %s chip=0x%02X fw=0x%02X", ok ? "ok" : "NOT FOUND", chip, fw);
+  return ok;
+}
+
+extern "C" bool metalio_plus_touch_read(uint8_t reg, uint8_t* buf, size_t len) {
+  return plus_i2c_read(TOUCH_I2C_ADDR, reg, buf, len) == ESP_OK;
+}
+
+extern "C" bool metalio_plus_touch_irq_active(void) { return digitalRead(TOUCH_INT_PIN) == LOW; }
+
+// rawX < 0 = released. Vendor calibration: home ~100, back/prev ~200, next ~300.
+extern "C" void metalio_plus_touch_key(int rawX, bool down) {
+  using metalio_plus::s_touchKeyMask;
+  uint8_t mask = 0;
+  if (down && rawX >= 0) {
+    if (rawX < 150) mask = 1u << InputManager::BTN_BACK;        // orange dot: back/home
+    else if (rawX < 250) mask = 1u << InputManager::BTN_LEFT;   // left pill: previous
+    else mask = 1u << InputManager::BTN_RIGHT;                  // right pill: next
+  }
+  if (mask != s_touchKeyMask) ESP_LOGE("PLUS", "diag cover key x=%d mask=0x%02X", rawX, mask);
+  metalio_plus::s_lastTouchKeyX = rawX;
+  s_touchKeyMask = mask;
+}
+
+extern "C" bool metalio_plus_touch_key_active(void) { return metalio_plus::s_touchKeyMask != 0; }

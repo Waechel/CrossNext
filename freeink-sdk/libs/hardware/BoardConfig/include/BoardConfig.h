@@ -1934,11 +1934,13 @@ constexpr BoardProfile makeMetalioPlusProfile() {
   p.usbDetect = PIN_UNASSIGNED;
   // FT6336U at 0x38, IRQ GPIO5, reset via TCA9555 P1.2 (board layer). Cover keys
   // report at raw Y~1600 (outside the panel): X 100 home, 200 back/prev, 300 next.
+  // Sensor raw frame is portrait 684x1216 (x across, y down); panel native is
+  // x = portrait y, y = 683 - portrait x: swap, then flip Y.
   p.touch = {TouchController::Ft6336u, 0, 1, 5, PIN_UNASSIGNED, 0x38,
-             false, 0, true, false};
+             0, 1215, 0, 683, false, 0, true, false};
   p.touch.swapXY = true;
   p.touch.flipY = true;
-  p.touch.hasHomeKey = true;
+  p.touch.hasHomeKey = false;  // cover keys are handled by the board key hook
   // YX6016N EN/PWM: cool GPIO6, warm GPIO7.
   p.frontlight = {6, 20000, 10, true, 7};
   p.audio = {AudioOutput::None, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED,
