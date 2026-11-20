@@ -1951,7 +1951,7 @@ constexpr BoardProfile makeMetalioPlusProfile() {
   p.sdmmc = {24, 25, 20, 21, 22, 23, 4};
   p.batteryGauge = {0, 1, 100000, 0x55, 0, 1, GaugeType::Bq27220};
   p.sensors = {0, 1, 100000, 0x51, 0, 0x19, 1, RtcType::Pcf8563, ImuType::Sc7a20h};
-  p.uiScale = 1.25f;
+  p.uiScale = 1.5f;  // user request: larger interface text on the 1216x684 panel
   p.viewableInsets = {8, 8, 8, 8};
   return p;
 }
