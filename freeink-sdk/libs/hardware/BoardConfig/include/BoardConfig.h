@@ -1924,11 +1924,11 @@ constexpr BoardProfile makeMetalioPlusProfile() {
                PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED};
   p.displaySpiHz = 0;
   p.sd = {PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, false, 0};
-  // BOOT/AI key GPIO61 (active low) is CrossNext's power key: short press locks
-  // (sleep screen + light sleep), press again to wake. The TCA9555 P1.7 "power"
-  // key selects and the volume keys P1.0/P1.1 navigate (board key hook).
-  p.input = {PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED,
-             PIN_UNASSIGNED, PIN_UNASSIGNED, 61, false};
+  // Side keys, top to bottom: BOOT/AI (GPIO61, active low) selects; volume
+  // rocker (TCA9555 P1.0/P1.1) navigates; power (TCA9555 P1.7) locks. The TCA
+  // keys arrive through the board key hook (power as BTN_POWER).
+  p.input = {PIN_UNASSIGNED, 61, PIN_UNASSIGNED, PIN_UNASSIGNED,
+             PIN_UNASSIGNED, PIN_UNASSIGNED, PIN_UNASSIGNED, false};
   p.batteryAdc = PIN_UNASSIGNED;
   p.batteryChargeStatus = PIN_UNASSIGNED;
   p.batteryDividerMultiplier = 1.0f;

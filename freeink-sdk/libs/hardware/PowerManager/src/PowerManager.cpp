@@ -140,28 +140,17 @@ void PowerManager::deepSleepUntilPowerButtonOrTimer(const uint64_t micros) {
   deepSleep();
 }
 
+#if FREEINK_DEVICE_METALIO_PLUS
+extern "C" void metalio_plus_lock_wait(void);  // ports/metalio-plus/board/crossnext
+#endif
+
 void PowerManager::deepSleep() {
 #if FREEINK_DEVICE_METALIO_PLUS
-  // Lock: the sleep screen is already drawn and the panel powered off. Wait in
-  // light sleep for the BOOT key (GPIO61, the Plus's power/lock key in
-  // CrossNext), then restart into the normal boot path. Deep-sleep wake on
-  // GPIO61 is not verified on the S31 yet; light sleep wakes from any GPIO.
-  {
-    const gpio_num_t key = static_cast<gpio_num_t>(BoardConfig::ACTIVE.input.power);
-    esp_task_wdt_delete(nullptr);
-    pinMode(key, INPUT_PULLUP);
-    while (digitalRead(key) == LOW) delay(10);  // let go of the press that locked
-    delay(50);
-    gpio_wakeup_enable(key, GPIO_INTR_LOW_LEVEL);
-    esp_sleep_enable_gpio_wakeup();
-    for (;;) {
-      esp_light_sleep_start();
-      if (digitalRead(key) == LOW) break;
-    }
-    gpio_wakeup_disable(key);
-    while (digitalRead(key) == LOW) delay(10);  // release before booting
-    esp_restart();
-  }
+  // Lock: the sleep screen is drawn and the panel is off. Light-sleep until the
+  // side power key is pressed, then restart into the normal boot path.
+  esp_task_wdt_delete(nullptr);
+  metalio_plus_lock_wait();
+  esp_restart();
 #endif
   esp_sleep_config_gpio_isolate();
   // Chips that hold single IOs through deep sleep (C61, S31) have no global

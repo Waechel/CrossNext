@@ -38,6 +38,14 @@
 #include "util/BookProgress.h"
 #include "util/ReadingTimeMemo.h"
 
+
+// Metalio Plus (684 px portrait, larger interface fonts): room for "100%",
+// a readable date, and two-line book titles under the covers.
+#if FREEINK_DEVICE_METALIO_PLUS
+constexpr int kShelfTitleBlock = 60, kShelfTitleLines = 2, kShelfPercentWidth = 84, kShelfDateFont = 0;
+#else
+constexpr int kShelfTitleBlock = 34, kShelfTitleLines = 1, kShelfPercentWidth = 56, kShelfDateFont = 3;
+#endif
 namespace fui = freeink::ui;
 namespace {
 constexpr fui::ActionId SELECT = 1;
@@ -297,11 +305,11 @@ void CoverGridHomeUi::drawLicorice(UiScreen& screen) {
   auto& target = screen.target();
   const auto ink = fui::Paint::solid(fui::Color::Black), paper = fui::Paint::solid(fui::Color::White);
   const auto label = [&target](fui::Rect r, const char* value, int font = 0, bool inverted = false,
-                               fui::TextAlign align = fui::TextAlign::Left) {
+                               fui::TextAlign align = fui::TextAlign::Left, int lines = 1) {
     fui::TextStyle style;
     style.font = font;
     style.align = align;
-    style.maxLines = 1;
+    style.maxLines = lines;
     style.color = inverted ? fui::Color::White : fui::Color::Black;
     target.text(r, value, style);
   };
@@ -312,7 +320,8 @@ void CoverGridHomeUi::drawLicorice(UiScreen& screen) {
   if (shelfStatus.status.battery.label) {
     char value[8];
     std::snprintf(value, sizeof(value), "%d%%", int(shelfStatus.status.battery.percent));
-    label(fui::makeRect(battery.x - 60, safe.y, 56, 44), value, 0, true, fui::TextAlign::Right);
+    label(fui::makeRect(battery.x - kShelfPercentWidth - 4, safe.y, kShelfPercentWidth, 44), value, 0, true,
+          fui::TextAlign::Right);
   }
   struct tm local{};
   const time_t now = std::time(nullptr);
@@ -327,7 +336,7 @@ void CoverGridHomeUi::drawLicorice(UiScreen& screen) {
     char date[32];
     dateformat::format(date, sizeof(date), local.tm_mday, local.tm_mon + 1, local.tm_year + 1900,
                        dateformat::fromStored(SETTINGS.dateFormat));
-    label(fui::makeRect(safe.x + 14, safe.y, safe.width / 2 - 88, 44), date, 3, true);
+    label(fui::makeRect(safe.x + 14, safe.y, safe.width / 2 - 88, 44), date, kShelfDateFont, true);
   }
   const auto menuButton = fui::makeRect(safe.right() - 54, band + 6, 44, 40);
   for (int n = 0; n < 3; ++n) target.fill(fui::makeRect(menuButton.x + 8, menuButton.y + 9 + n * 9, 28, 2), ink);
@@ -342,7 +351,7 @@ void CoverGridHomeUi::drawLicorice(UiScreen& screen) {
     // The catalog is not loaded yet; paint fixed slots without touching cover resources.
     for (int n = 0; n < rows * columns; ++n) {
       const int x = gridArea.x + n % columns * (cellWidth + gap);
-      const int y = gridArea.y + n / columns * (artHeight + 34 + gap);
+      const int y = gridArea.y + n / columns * (artHeight + kShelfTitleBlock + gap);
       const auto art = fui::makeRect(x + (cellWidth - artHeight * 2 / 3) / 2, y, artHeight * 2 / 3, artHeight);
       GUI.drawCoverPlaceholder(renderer, Rect{art.x, art.y, art.width, art.height});
       softCoverOutline(target, art);
@@ -383,10 +392,10 @@ void CoverGridHomeUi::drawLicorice(UiScreen& screen) {
   for (int n = 0; n < rows * columns && size_t(n + 1) < books->size(); ++n) {
     const int index = n + 1;
     const int x = gridArea.x + n % columns * (cellWidth + gap);
-    const int y = gridArea.y + n / columns * (artHeight + 34 + gap);
+    const int y = gridArea.y + n / columns * (artHeight + kShelfTitleBlock + gap);
     const auto art = fui::makeRect(x + (cellWidth - artHeight * 2 / 3) / 2, y, artHeight * 2 / 3, artHeight);
     coverAreas[index] = art;
-    screen.frame().hit(fui::makeRect(x, y, cellWidth, artHeight + 32), SELECT, index, fui::InputTouch);
+    screen.frame().hit(fui::makeRect(x, y, cellWidth, artHeight + kShelfTitleBlock - 2), SELECT, index, fui::InputTouch);
     if (cached) continue;
     coverCache.paint(art, index, coverPaths[index], true, true);
     if (!coverCache.hasImage(index)) {
@@ -394,7 +403,8 @@ void CoverGridHomeUi::drawLicorice(UiScreen& screen) {
       GUI.drawCoverPlaceholder(renderer, Rect{art.x, art.y, art.width, art.height});
     }
     softCoverOutline(target, art);
-    label(fui::makeRect(x, art.bottom() + 4, cellWidth, 26), (*books)[index].title.c_str());
+    label(fui::makeRect(x, art.bottom() + 4, cellWidth, kShelfTitleBlock - 8), (*books)[index].title.c_str(), 0, false,
+          fui::TextAlign::Left, kShelfTitleLines);
   }
   if (!cached) homecover::storeScene(renderer);
   // Progress overlays are rebuilt after restoring the unchanged artwork.
@@ -475,7 +485,7 @@ void CoverGridHomeUi::drawLicorice(UiScreen& screen) {
     char date[32];
     dateformat::format(date, sizeof(date), local.tm_mday, local.tm_mon + 1, local.tm_year + 1900,
                        dateformat::fromStored(SETTINGS.dateFormat));
-    label(fui::makeRect(safe.x + 14, safe.y, safe.width / 2 - 88, 44), date, 3, true);
+    label(fui::makeRect(safe.x + 14, safe.y, safe.width / 2 - 88, 44), date, kShelfDateFont, true);
   }
   screen.frame().hit(fui::makeRect(0, band, left, safe.bottom() - band), SELECT, MENU_TOGGLE, fui::InputTouch);
   target.fill(fui::makeRect(panel.x, band, panel.width, panel.bottom() - band), paper);

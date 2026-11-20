@@ -10,6 +10,8 @@
 #include <InputManager.h>
 #include <Logging.h>
 #include <esp_log.h>
+#include <esp_sleep.h>
+#include <driver/gpio.h>
 
 extern "C" {
 #include <config.h>
@@ -49,9 +51,8 @@ uint8_t keyHook() {
   // are the configurable side keys (page jumps), so volume maps to LEFT/RIGHT.
   if (!(port1 & (1u << (EPD_IO_VOL_UP - 8)))) mask |= 1u << InputManager::BTN_LEFT;
   if (!(port1 & (1u << (EPD_IO_VOL_DOWN - 8)))) mask |= 1u << InputManager::BTN_RIGHT;
-  // Power selects. BTN_POWER would request sleep, which only restarts the Plus
-  // until a wake path exists.
-  if (!(port1 & (1u << (EPD_IO_POWER - 8)))) mask |= 1u << InputManager::BTN_CONFIRM;
+  // Power locks (CrossNext sleep -> PowerManager::deepSleep -> metalio_plus_lock_wait).
+  if (!(port1 & (1u << (EPD_IO_POWER - 8)))) mask |= 1u << InputManager::BTN_POWER;
   if (mask != s_lastMask) ESP_LOGE("PLUS", "diag keys port1=0x%02X mask=0x%02X", port1, mask);
   s_lastMask = mask;
   return mask | s_touchKeyMask;
@@ -155,3 +156,32 @@ extern "C" void metalio_plus_touch_key(int rawX, bool down) {
 }
 
 extern "C" bool metalio_plus_touch_key_active(void) { return metalio_plus::s_touchKeyMask != 0; }
+
+// Lock: called from PowerManager::deepSleep after the sleep screen is drawn.
+// Light-sleeps until the power key (TCA9555 P1.7) is pressed, then returns so
+// the caller restarts. The TCA INT line (GPIO2, wired-AND with the IMU INT)
+// wakes on any key change; a 250 ms timer is the fallback if the line is held.
+extern "C" void metalio_plus_lock_wait(void) {
+  const auto powerDown = []() {
+    uint8_t p0 = 0xFF, p1 = 0xFF;
+    epd_board_metalio_eink4_plus_ioexp_read_port(0, &p0);  // reading clears INT
+    if (!epd_board_metalio_eink4_plus_ioexp_read_port(1, &p1)) return false;
+    return !(p1 & (1u << (EPD_IO_POWER - 8)));
+  };
+  while (powerDown()) delay(20);  // let go of the press that locked
+  delay(50);
+  const gpio_num_t intPin = IO_EXPANDER_INT_GPIO;
+  pinMode(intPin, INPUT_PULLUP);
+  for (;;) {
+    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+    if (digitalRead(intPin) == HIGH) {
+      gpio_wakeup_enable(intPin, GPIO_INTR_LOW_LEVEL);
+      esp_sleep_enable_gpio_wakeup();
+    }
+    esp_sleep_enable_timer_wakeup(250 * 1000);
+    esp_light_sleep_start();
+    gpio_wakeup_disable(intPin);
+    if (powerDown()) break;
+  }
+  while (powerDown()) delay(20);  // release before booting
+}

@@ -16,6 +16,8 @@
 #define UI_14_FONT_ID (1402837215)
 #define UI_16_FONT_ID (1557204831)
 #define UI_18_FONT_ID (1689421375)
+#define UI_20_FONT_ID (1734062911)
+#define UI_24_FONT_ID (1873390143)
 
 // Font ID 0 is reserved as the "not found" sentinel.
 // Guard against any hash accidentally producing 0.

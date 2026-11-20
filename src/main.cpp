@@ -159,6 +159,16 @@ EpdFontFamily ui16FontFamily(&ui16RegularFont, &ui16BoldFont);
 EpdFont ui18RegularFont(&ubuntu_18_regular);
 EpdFont ui18BoldFont(&ubuntu_18_bold);
 EpdFontFamily ui18FontFamily(&ui18RegularFont, &ui18BoldFont);
+#include <builtinFonts/ubuntu_20_bold.h>
+#include <builtinFonts/ubuntu_20_regular.h>
+#include <builtinFonts/ubuntu_24_bold.h>
+#include <builtinFonts/ubuntu_24_regular.h>
+EpdFont ui20RegularFont(&ubuntu_20_regular);
+EpdFont ui20BoldFont(&ubuntu_20_bold);
+EpdFontFamily ui20FontFamily(&ui20RegularFont, &ui20BoldFont);
+EpdFont ui24RegularFont(&ubuntu_24_regular);
+EpdFont ui24BoldFont(&ubuntu_24_bold);
+EpdFontFamily ui24FontFamily(&ui24RegularFont, &ui24BoldFont);
 #endif
 
 // Preserve an unattended timer wake across an aborted sleep entry.
@@ -764,6 +774,8 @@ void setupDisplayAndFonts(bool seamless = false) {
   renderer.insertFont(UI_14_FONT_ID, ui14FontFamily);
   renderer.insertFont(UI_16_FONT_ID, ui16FontFamily);
   renderer.insertFont(UI_18_FONT_ID, ui18FontFamily);
+  renderer.insertFont(UI_20_FONT_ID, ui20FontFamily);
+  renderer.insertFont(UI_24_FONT_ID, ui24FontFamily);
 #endif
   renderer.insertFont(SMALL_FONT_ID, smallFontFamily);
 

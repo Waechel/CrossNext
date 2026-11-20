@@ -20,7 +20,11 @@ inline ShelfLayout shelfLayout(const freeink::ui::DeviceContext& device) {
   out.gap = wide ? 24 : 14;
   out.cellWidth = (out.grid.width - out.gap * 2) / 3;
   const int height = (out.grid.height - out.gap * (out.rows - 1)) / out.rows;
+#if FREEINK_DEVICE_METALIO_PLUS
+  out.artHeight = std::max(24, std::min(height - 56, out.cellWidth * 3 / 2));  // two-line titles
+#else
   out.artHeight = std::max(24, std::min(height - 30, out.cellWidth * 3 / 2));
+#endif
   return out;
 }
 }  // namespace homeui

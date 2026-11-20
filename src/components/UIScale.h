@@ -11,7 +11,7 @@ struct UIScaleSpec {
   int titleFontId;
 };
 
-// 0 Small (10/12, the stock tier) .. 3 Extra large (16/18). Defined in
+// 0 Small (14/12) .. 3 Extra large (24/18), body/subtitle. Defined in
 // CrossPointSettings.cpp; always 0 on boards without the larger UI fonts.
 int uiTextSizeTier();
 
@@ -20,11 +20,13 @@ inline UIScaleSpec uiScaleSpec() {
   spec.smallFontId = UI_10_FONT_ID;
   spec.bodyFontId = UI_12_FONT_ID;
 #if FREEINK_DEVICE_METALIO_PLUS
+  // Body/subtitle pairs; even Small is a step above the stock 12/10 tier on
+  // this 1216x684 panel.
   switch (uiTextSizeTier()) {
-    case 1: spec.smallFontId = UI_12_FONT_ID; spec.bodyFontId = UI_14_FONT_ID; break;
-    case 2: spec.smallFontId = UI_14_FONT_ID; spec.bodyFontId = UI_16_FONT_ID; break;
-    case 3: spec.smallFontId = UI_16_FONT_ID; spec.bodyFontId = UI_18_FONT_ID; break;
-    default: break;
+    case 0: spec.smallFontId = UI_12_FONT_ID; spec.bodyFontId = UI_14_FONT_ID; break;
+    case 1: spec.smallFontId = UI_14_FONT_ID; spec.bodyFontId = UI_18_FONT_ID; break;
+    case 2: spec.smallFontId = UI_16_FONT_ID; spec.bodyFontId = UI_20_FONT_ID; break;
+    default: spec.smallFontId = UI_18_FONT_ID; spec.bodyFontId = UI_24_FONT_ID; break;
   }
   spec.titleFontId = spec.bodyFontId;
   return spec;
