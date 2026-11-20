@@ -105,7 +105,6 @@ jobs:
           python3 ports/metalio-plus/ci/check_image.py .pio/build/metalio_plus/firmware.bin
           mkdir -p out
           cp .pio/build/metalio_plus/firmware.bin out/CrossNext-Plus-app1.bin
-          cp .pio/build/metalio_plus/firmware.elf out/CrossNext-Plus.elf
           cp ports/metalio-plus/flash/otadata-app1.bin ports/metalio-plus/flash/otadata-app0.bin out/
           cp .pio/build/metalio_plus/partitions.bin out/partition-table-large-app1.bin
           sha256sum out/*.bin | tee out/SHA256SUMS.txt
@@ -113,3 +112,8 @@ jobs:
         with:
           name: CrossNext-Plus-${{ github.run_number }}
           path: out/
+      # Debug symbols for decoding crash backtraces; kept out of the flash zip.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CrossNext-Plus-${{ github.run_number }}-debug-elf
+          path: .pio/build/metalio_plus/firmware.elf
