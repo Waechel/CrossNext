@@ -192,10 +192,11 @@ class MetalioPlusDriver final : public PanelDriver {
     epd_poweron();
     EpdDrawError result = EPD_DRAW_EMPTY_LINE_QUEUE;
     if (epd_board_metalio_eink4_plus_tps_ok()) {
-      if (clean) {
-        result = epd_clear_checked();
-        if (result == EPD_DRAW_SUCCESS) result = epd_hl_update_screen_from_white(hl, waveform, kTemperature);
-      } else if (full || waveform == MODE_GC16) {
+      if (clean || full || waveform == MODE_GC16) {
+        // No epd_clear_checked() here: its short push_pixels frames underran the
+        // line feed on hardware (fault row 420, worker 0) and a failed clear
+        // aborted the draw, leaving the panel blank. A full GC16 drives every
+        // pixel from the assumed state; it is what the stage-1 smoke test used.
         result = epd_hl_update_screen_full(hl, waveform, kTemperature);
       } else {
         result = epd_hl_update_screen(hl, waveform, kTemperature);
