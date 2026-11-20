@@ -10,6 +10,7 @@
 
 #include <esp_cpu.h>
 #include <esp_heap_caps.h>
+#include <esp_intr_alloc.h>
 #include <esp_log.h>
 #include <esp_memory_utils.h>
 #include <esp_partition.h>
@@ -36,6 +37,10 @@ extern "C" char g_metalio_plus_selftest[96];
 char g_metalio_plus_selftest[96] = "selftest not run";
 extern "C" char g_metalio_plus_bench[192];
 char g_metalio_plus_bench[192] = "bench not run";
+extern "C" char g_metalio_plus_cores[160];
+char g_metalio_plus_cores[160] = "cores not measured";
+extern "C" char g_metalio_plus_intr[3072];
+char g_metalio_plus_intr[3072] = "";
 
 namespace {
 // Sequential 32-bit reads; returns MB/s. volatile sink keeps the loop.
@@ -184,9 +189,48 @@ struct InitOnCore0 {
   bool ok;
 };
 
+// Internal-RAM read speed on a given core, to see whether panel init leaves
+// something (an interrupt) eating that core. Smoke app: 422 MB/s.
+unsigned iramOnce() {
+  unsigned mb = 0;
+  if (uint8_t* buf = static_cast<uint8_t*>(heap_caps_malloc(16384, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT))) {
+    memset(buf, 0x5A, 16384);
+    mb = readMBps(buf, 16384, 64);
+    heap_caps_free(buf);
+  }
+  return mb;
+}
+struct CoreProbe {
+  SemaphoreHandle_t done;
+  unsigned mb;
+};
+void coreProbeTask(void* arg) {
+  auto* p = static_cast<CoreProbe*>(arg);
+  p->mb = iramOnce();
+  xSemaphoreGive(p->done);
+  vTaskDelete(nullptr);
+}
+unsigned iramOnCore(int core) {
+  CoreProbe p = {xSemaphoreCreateBinary(), 0};
+  if (!p.done) return 0;
+  if (xTaskCreatePinnedToCore(coreProbeTask, "plus_probe", 4096, &p, configMAX_PRIORITIES - 2, nullptr, core) == pdPASS)
+    xSemaphoreTake(p.done, pdMS_TO_TICKS(2000));
+  vSemaphoreDelete(p.done);
+  return p.mb;
+}
+
 void initOnCore0Task(void* arg) {
   auto* init = static_cast<InitOnCore0*>(arg);
+  const unsigned pre0 = iramOnce(), pre1 = iramOnCore(1);
   init->ok = MetalioEpd_Init();
+  const unsigned post0 = iramOnce(), post1 = iramOnCore(1);
+  snprintf(g_metalio_plus_cores, sizeof(g_metalio_plus_cores),
+           "cores iram MB/s: before panel init c0 %u c1 %u | after c0 %u c1 %u (smoke: 422)", pre0, pre1, post0, post1);
+  ESP_LOGE(TAG, "diag %s", g_metalio_plus_cores);
+  if (FILE* f = fmemopen(g_metalio_plus_intr, sizeof(g_metalio_plus_intr) - 1, "w")) {
+    esp_intr_dump(f);
+    fclose(f);
+  }
   if (init->ok) bootSelfTest();
   xSemaphoreGive(init->done);
   vTaskDelete(nullptr);
