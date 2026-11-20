@@ -75,6 +75,33 @@ void finishOverlayMsb(const uint8_t* base, const uint8_t* msb, size_t srcBytes, 
   }
 }
 
+// Bring-up bisect: right after panel init, before CrossNext's other tasks run,
+// draw the stage-1 smoke pattern with the stage-1 call. Success here with
+// failures later means runtime contention; failure here means build/link.
+void bootSelfTest() {
+  EpdiyHighlevelState* hl = MetalioEpd_Hl();
+  if (!hl || !hl->front_fb) return;
+  uint8_t* fb = epd_hl_get_framebuffer(hl);
+  epd_hl_set_all_white(hl);
+  const int w = epd_width(), h = epd_height();
+  for (int t = 0; t < 12; ++t) epd_draw_rect((EpdRect){t, t, w - 2 * t, h - 2 * t}, 0x00, fb);
+  const int len = w / 2 - 60;
+  for (int i = 0; i < 16; ++i) {
+    const int x0 = 40 + i * len / 16, x1 = 40 + (i + 1) * len / 16;
+    epd_fill_rect((EpdRect){x0, 40, x1 - x0, h - 80}, static_cast<uint8_t>(0xFF - i * 0x11), fb);
+  }
+  epd_fill_circle(w * 3 / 4, h / 2, h / 3, 0x00, fb);
+  epd_fill_circle(w * 3 / 4, h / 2, h / 18, 0xFF, fb);
+  epd_fill_rect((EpdRect){24, 24, 60, 60}, 0x00, fb);
+  epd_poweron();
+  const int64_t t0 = esp_timer_get_time();
+  const EpdDrawError err = epd_hl_update_screen_full(hl, MODE_GC16, 25);
+  const int64_t t1 = esp_timer_get_time();
+  epd_poweroff();
+  ESP_LOGE(TAG, "diag selftest (smoke pattern, core %d) result=0x%x ms=%lld", xPortGetCoreID(),
+           static_cast<unsigned>(err), static_cast<long long>((t1 - t0) / 1000));
+}
+
 // epd_init() allocates the LCD peripheral interrupts on the calling core. The
 // EOF handler refills bounce buffers in ISR context, and EPDiy pins render
 // worker 1 to core 1. CrossNext calls display.begin() from Arduino's loopTask,
@@ -89,6 +116,7 @@ struct InitOnCore0 {
 void initOnCore0Task(void* arg) {
   auto* init = static_cast<InitOnCore0*>(arg);
   init->ok = MetalioEpd_Init();
+  if (init->ok) bootSelfTest();
   xSemaphoreGive(init->done);
   vTaskDelete(nullptr);
 }
