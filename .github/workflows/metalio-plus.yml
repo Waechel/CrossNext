@@ -67,6 +67,12 @@ jobs:
       - name: Dump hardware config (smoke)
         run: |
           grep -E "^CONFIG_(SPIRAM|CACHE|CPU_FREQ|FLASHMODE|FLASHFREQ|ESPTOOLPY_FLASH|LCD_|XIP|FREERTOS_HZ|FREERTOS_UNICORE|COMPILER_OPTIM|MMU_PAGE|PSRAM|IRAM)" ports/metalio-plus/smoke/build/config/sdkconfig.h ports/metalio-plus/smoke/sdkconfig 2>/dev/null | sed 's/^/smoke: /' | sort -u | tee smoke-config.txt
+      - name: Symbol placement (smoke)
+        if: always()
+        run: |
+          . "$IDF_PATH/export.sh" >/dev/null 2>&1 || true
+          nm=$(command -v riscv32-esp-elf-nm || true)
+          [ -n "$nm" ] && "$nm" -S --defined-only ports/metalio-plus/smoke/build/CrossNext-Plus-Smoke.elf | grep -iE ' [tTdDbBrR] ' | grep -iE '(lut|lcd|render|line_queue|lq_|phase|epd_|feed|bounce|calc_|isr|eof|ricky|white_border|nibble|waveform)' | awk '{print "symsmoke", $4, $1, $2, $3}' | sort || true
       - uses: actions/upload-artifact@v4
         with:
           name: smoke-config-${{ github.run_number }}
@@ -107,6 +113,11 @@ jobs:
         env:
           SCONSFLAGS: -k
         run: pio run -e metalio_plus 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+      - name: Symbol placement (crossnext)
+        if: always()
+        run: |
+          nm=$(find ~/.platformio/packages -name riscv32-esp-elf-nm -type f 2>/dev/null | head -1); echo "nm=$nm"
+          [ -n "$nm" ] && "$nm" -S --defined-only .pio/build/metalio_plus/firmware.elf | grep -iE ' [tTdDbBrR] ' | grep -iE '(lut|lcd|render|line_queue|lq_|phase|epd_|feed|bounce|calc_|isr|eof|ricky|white_border|nibble|waveform)' | awk '{print "symcn", $4, $1, $2, $3}' | sort || true
       - name: Dump hardware config (crossnext)
         if: always()
         run: |
