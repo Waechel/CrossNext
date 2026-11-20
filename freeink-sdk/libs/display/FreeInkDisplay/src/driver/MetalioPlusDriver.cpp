@@ -8,7 +8,11 @@
 
 #if FREEINK_DRIVER_METALIO_PLUS
 
+#include <esp_cpu.h>
+#include <esp_heap_caps.h>
 #include <esp_log.h>
+#include <esp_memory_utils.h>
+#include <esp_partition.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
@@ -30,6 +34,61 @@ extern "C" uint32_t epd_lcd_get_first_fault(void);
 // Read by the board diag task, which repeats it after the serial monitor attaches.
 extern "C" char g_metalio_plus_selftest[96];
 char g_metalio_plus_selftest[96] = "selftest not run";
+extern "C" char g_metalio_plus_bench[192];
+char g_metalio_plus_bench[192] = "bench not run";
+
+namespace {
+// Sequential 32-bit reads; returns MB/s. volatile sink keeps the loop.
+volatile uint32_t s_benchSink;
+unsigned readMBps(const uint8_t* p, size_t bytes, int passes) {
+  const uint32_t* w = reinterpret_cast<const uint32_t*>(p);
+  const size_t n = bytes / 4;
+  uint32_t acc = 0;
+  const int64_t t0 = esp_timer_get_time();
+  for (int k = 0; k < passes; ++k)
+    for (size_t i = 0; i < n; i += 4) acc += w[i] ^ w[i + 1] ^ w[i + 2] ^ w[i + 3];
+  const int64_t us = esp_timer_get_time() - t0;
+  s_benchSink = acc;
+  return us > 0 ? static_cast<unsigned>((static_cast<int64_t>(bytes) * passes) / us) : 0;
+}
+
+// Measures the things the EPDiy line feed depends on, to compare with the
+// stage-1 smoke app where the same driver keeps up.
+void runBench(const uint8_t* fb, size_t fbBytes) {
+  const uint32_t c0 = esp_cpu_get_cycle_count();
+  const int64_t t0 = esp_timer_get_time();
+  while (esp_timer_get_time() - t0 < 20000) {
+  }
+  const uint32_t cycles = esp_cpu_get_cycle_count() - c0;
+  const int64_t us = esp_timer_get_time() - t0;
+  const unsigned mhz = static_cast<unsigned>(cycles / us);
+
+  unsigned intMB = 0;
+  if (uint8_t* buf = static_cast<uint8_t*>(heap_caps_malloc(16384, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT))) {
+    memset(buf, 0x5A, 16384);
+    intMB = readMBps(buf, 16384, 64);
+    heap_caps_free(buf);
+  }
+  const unsigned psMB = fb ? readMBps(fb, fbBytes, 4) : 0;
+
+  unsigned flMB = 0;
+  const esp_partition_t* part =
+      esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, "app1");
+  if (part) {
+    const void* map = nullptr;
+    esp_partition_mmap_handle_t h;
+    if (esp_partition_mmap(part, 0, 1 << 20, ESP_PARTITION_MMAP_DATA, &map, &h) == ESP_OK) {
+      flMB = readMBps(static_cast<const uint8_t*>(map), 1 << 20, 2);
+      esp_partition_munmap(h);
+    }
+  }
+  snprintf(g_metalio_plus_bench, sizeof(g_metalio_plus_bench),
+           "bench cpu %u MHz | iram %u MB/s | psram %u MB/s | flash %u MB/s | fb %s | int free %u",
+           mhz, intMB, psMB, flMB, fb ? (esp_ptr_external_ram(fb) ? "psram" : "internal") : "none",
+           static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)));
+  ESP_LOGE("PlusDisplay", "diag %s", g_metalio_plus_bench);
+}
+}  // namespace
 
 namespace freeink {
 namespace {
@@ -91,6 +150,7 @@ void bootSelfTest() {
     return;
   }
   uint8_t* fb = epd_hl_get_framebuffer(hl);
+  runBench(fb, static_cast<size_t>(epd_width()) * epd_height() / 2);
   epd_hl_set_all_white(hl);
   const int w = epd_width(), h = epd_height();
   for (int t = 0; t < 12; ++t) epd_draw_rect((EpdRect){t, t, w - 2 * t, h - 2 * t}, 0x00, fb);

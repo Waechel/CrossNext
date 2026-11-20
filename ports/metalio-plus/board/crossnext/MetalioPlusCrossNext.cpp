@@ -16,6 +16,7 @@ extern "C" {
 #include <epd_board_metalio_eink4_plus.h>
 #include <plus_i2c_wire.h>
 extern char g_metalio_plus_selftest[96];
+extern char g_metalio_plus_bench[192];
 }
 
 namespace metalio_plus {
@@ -72,6 +73,7 @@ void diagTask(void*) {
   for (int i = 0; i < 10; ++i) {
     vTaskDelay(pdMS_TO_TICKS(i == 0 ? 8000 : 15000));
     ESP_LOGE("PLUS", "diag %s", g_metalio_plus_selftest);
+    ESP_LOGE("PLUS", "diag %s", g_metalio_plus_bench);
     ESP_LOGE("PLUS", "diag: early bus %s | %s | TCA9555 %s | TPS65185 %s | keys mask 0x%02X | CPU %u MHz | heap %u, PSRAM %u",
             s_earlyOk ? "ok" : "FAILED", s_scanSummary,
             s_keysReady ? "ok" : "MISSING", epd_board_metalio_eink4_plus_tps_ok() ? "ok" : "not ready", s_lastMask,
