@@ -315,7 +315,18 @@ bool HalGPIO::isUsbConnected() const {
   // a /STAT pin — and reports false on boards with no battery telemetry at all.
   // Caveat: charge termination at 100% reads as "not connected".
   static const BatteryMonitor battery;
-  return battery.isCharging();
+  // update() asks every loop; on gauge boards each ask is an I2C transaction,
+  // and a gauge that NACKs turned that into constant bus errors (Metalio Plus).
+  // USB plug state does not need sub-second resolution.
+  static constexpr unsigned long kChargingPollMs = 1000;
+  static unsigned long lastPollMs = 0;
+  static bool cached = false;
+  const unsigned long now = millis();
+  if (lastPollMs == 0 || now - lastPollMs >= kChargingPollMs) {
+    lastPollMs = now == 0 ? 1 : now;
+    cached = battery.isCharging();
+  }
+  return cached;
 }
 
 bool HalGPIO::coldBootImpliesPowerButton() const {
