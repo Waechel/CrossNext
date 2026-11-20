@@ -58,9 +58,7 @@ static void run_bench(const uint8_t* fb, size_t fb_bytes) {
     heap_caps_free(buf);
   }
   if (fb) ps_mb = read_mbps(fb, fb_bytes, 4);
-  const esp_partition_t* part = esp_partition_get_boot_partition();
-  const esp_partition_t* run = esp_ota_get_running_partition();
-  if (run) part = run;
+  const esp_partition_t* part = esp_ota_get_running_partition();
   if (part) {
     const void* map = NULL;
     esp_partition_mmap_handle_t h;
