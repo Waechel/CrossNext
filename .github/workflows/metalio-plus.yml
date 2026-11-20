@@ -110,8 +110,9 @@ jobs:
       - name: Dump hardware config (crossnext)
         if: always()
         run: |
-          ls sdkconfig* .pio/build/metalio_plus/config 2>/dev/null || true
-          for f in sdkconfig.metalio_plus .pio/build/metalio_plus/config/sdkconfig.h; do
+          files=$(find . ~/.platformio/packages -path '*esp32s31*' \( -name sdkconfig -o -name sdkconfig.h \) 2>/dev/null; ls sdkconfig.metalio_plus 2>/dev/null)
+          echo "config files: $files"
+          for f in $files; do
             [ -f "$f" ] && grep -E "^(#define )?CONFIG_(SPIRAM|CACHE|CPU_FREQ|FLASHMODE|FLASHFREQ|ESPTOOLPY_FLASH|LCD_|XIP|FREERTOS_HZ|FREERTOS_UNICORE|COMPILER_OPTIM|MMU_PAGE|PSRAM|IRAM)" "$f" | sed "s|^|crossnext($f): |"
           done | sort -u
       - name: Verify image
