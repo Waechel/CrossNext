@@ -29,6 +29,7 @@ extern "C" {
 #include <epd_highlevel.h>
 #include <epdiy.h>
 #include <metalio_epd.h>
+#include <plus_bench.h>
 }
 
 extern "C" uint32_t epd_lcd_get_first_fault(void);
@@ -39,6 +40,8 @@ extern "C" char g_metalio_plus_bench[192];
 char g_metalio_plus_bench[192] = "bench not run";
 extern "C" char g_metalio_plus_cores[160];
 char g_metalio_plus_cores[160] = "cores not measured";
+extern "C" char g_metalio_plus_shared[192];
+char g_metalio_plus_shared[192] = "shared bench not run";
 extern "C" char g_metalio_plus_intr[3072];
 char g_metalio_plus_intr[3072] = "";
 
@@ -221,6 +224,7 @@ unsigned iramOnCore(int core) {
 
 void initOnCore0Task(void* arg) {
   auto* init = static_cast<InitOnCore0*>(arg);
+  plus_bench_run(g_metalio_plus_shared, sizeof(g_metalio_plus_shared));
   const unsigned pre0 = iramOnce(), pre1 = iramOnCore(1);
   init->ok = MetalioEpd_Init();
   const unsigned post0 = iramOnce(), post1 = iramOnCore(1);

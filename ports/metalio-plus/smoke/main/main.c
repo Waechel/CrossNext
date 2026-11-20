@@ -26,11 +26,13 @@
 #include "epd_highlevel.h"
 #include "epdiy.h"
 #include "metalio_epd.h"
+#include "plus_bench.h"
 
 static const char* TAG = "plus_smoke";
 
 // Same measurements as the CrossNext boot self-test (MetalioPlusDriver.cpp).
 static char s_bench[192] = "bench not run";
+static char s_shared[192] = "shared bench not run";
 static volatile uint32_t s_sink;
 static unsigned read_mbps(const uint8_t* p, size_t bytes, int passes) {
   const uint32_t* w = (const uint32_t*)p;
@@ -119,6 +121,7 @@ void app_main(void) {
     EpdiyHighlevelState* hl = MetalioEpd_Hl();
     uint8_t* fb = epd_hl_get_framebuffer(hl);
     run_bench(fb, (size_t)epd_width() * epd_height() / 2);
+    plus_bench_run(s_shared, sizeof(s_shared));
     epd_hl_set_all_white(hl);
     draw_test_pattern(fb);
 
@@ -133,6 +136,7 @@ void app_main(void) {
   // Stay alive and visible on the USB console.
   for (int n = 0;; ++n) {
     ESP_LOGI(TAG, "%s", s_bench);
+    ESP_LOGI(TAG, "%s", s_shared);
     ESP_LOGI(TAG, "alive %d s, tps_ok=%d", n * 5, (int)epd_board_metalio_eink4_plus_tps_ok());
     vTaskDelay(pdMS_TO_TICKS(5000));
   }

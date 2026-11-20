@@ -67,6 +67,9 @@ jobs:
       - name: Dump hardware config (smoke)
         run: |
           grep -E "^CONFIG_(SPIRAM|CACHE|CPU_FREQ|FLASHMODE|FLASHFREQ|ESPTOOLPY_FLASH|LCD_|XIP|FREERTOS_HZ|FREERTOS_UNICORE|COMPILER_OPTIM|MMU_PAGE|PSRAM|IRAM)" ports/metalio-plus/smoke/build/config/sdkconfig.h ports/metalio-plus/smoke/sdkconfig 2>/dev/null | sed 's/^/smoke: /' | sort -u | tee smoke-config.txt
+      - name: Full config (smoke)
+        if: always()
+        run: grep -E "^#define CONFIG_" ports/metalio-plus/smoke/build/config/sdkconfig.h | sed 's/^/fullsmoke /' || true
       - name: Symbol placement (smoke)
         if: always()
         run: |
@@ -113,6 +116,13 @@ jobs:
         env:
           SCONSFLAGS: -k
         run: pio run -e metalio_plus 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+      - name: Full config (crossnext)
+        if: always()
+        run: grep -E "^#define CONFIG_" ~/.platformio/packages/framework-arduinoespressif32-libs/esp32s31/dio_opi/include/sdkconfig.h | sed 's/^/fullcn /' || true
+      - name: Compile flags (crossnext)
+        if: always()
+        run: |
+          for f in ~/.platformio/packages/framework-arduinoespressif32-libs/esp32s31/flags/*; do echo "flags $(basename $f): $(cat $f)"; done || true
       - name: Symbol placement (crossnext)
         if: always()
         run: |

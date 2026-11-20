@@ -18,6 +18,7 @@ extern "C" {
 extern char g_metalio_plus_selftest[96];
 extern char g_metalio_plus_bench[192];
 extern char g_metalio_plus_cores[160];
+extern char g_metalio_plus_shared[192];
 extern char g_metalio_plus_intr[3072];
 }
 
@@ -72,11 +73,12 @@ void scanBus() {
 // The serial monitor usually attaches after boot; repeat the bring-up summary
 // for the first two minutes so it is always captured. 4 KB stack, then exits.
 void diagTask(void*) {
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < 40; ++i) {
     vTaskDelay(pdMS_TO_TICKS(i == 0 ? 8000 : 15000));
     ESP_LOGE("PLUS", "diag %s", g_metalio_plus_selftest);
     ESP_LOGE("PLUS", "diag %s", g_metalio_plus_bench);
     ESP_LOGE("PLUS", "diag %s", g_metalio_plus_cores);
+    ESP_LOGE("PLUS", "diag %s", g_metalio_plus_shared);
     if (i == 0 || i == 3) ESP_LOGE("PLUS", "diag interrupts:\n%s", g_metalio_plus_intr);
     ESP_LOGE("PLUS", "diag: early bus %s | %s | TCA9555 %s | TPS65185 %s | keys mask 0x%02X | CPU %u MHz | heap %u, PSRAM %u",
             s_earlyOk ? "ok" : "FAILED", s_scanSummary,

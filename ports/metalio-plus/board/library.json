@@ -16,6 +16,7 @@
       "+<display/>",
       "-<display/output_common/lut.S>",
       "+<sd_hold_stub.c>",
+      "+<plus_bench.c>",
       "+<crossnext/>"
     ],
     "flags": [
