@@ -9,6 +9,7 @@
 #include <Arduino.h>
 #include <InputManager.h>
 #include <Logging.h>
+#include <esp_log.h>
 
 extern "C" {
 #include <config.h>
@@ -39,7 +40,7 @@ uint8_t keyHook() {
   // Power acts as BACK during bring-up: there is no Plus wake path yet, and
   // BTN_POWER would request sleep (which restarts the Plus for now).
   if (!(port1 & (1u << (EPD_IO_POWER - 8)))) mask |= 1u << InputManager::BTN_BACK;
-  if (mask != s_lastMask) LOG_DBG("PLUS", "keys port1=0x%02X mask=0x%02X", port1, mask);
+  if (mask != s_lastMask) ESP_LOGE("PLUS", "diag keys port1=0x%02X mask=0x%02X", port1, mask);
   s_lastMask = mask;
   return mask;
 }
@@ -61,7 +62,7 @@ void scanBus() {
   // 0x51 PCF8563, 0x55 BQ27220, 0x68 TPS65185.
   snprintf(s_scanSummary, sizeof(s_scanSummary), "I2C bus SDA0/SCL1: %d device(s):%s", count,
            count ? found : " none");
-  LOG_INF("PLUS", "%s", s_scanSummary);
+  ESP_LOGE("PLUS", "diag %s", s_scanSummary);
 }
 
 // The serial monitor usually attaches after boot; repeat the bring-up summary
@@ -69,7 +70,7 @@ void scanBus() {
 void diagTask(void*) {
   for (int i = 0; i < 6; ++i) {
     vTaskDelay(pdMS_TO_TICKS(20000));
-    LOG_INF("PLUS", "diag: early bus %s | %s | TCA9555 %s | TPS65185 %s | keys mask 0x%02X | CPU %u MHz | heap %u, PSRAM %u",
+    ESP_LOGE("PLUS", "diag: early bus %s | %s | TCA9555 %s | TPS65185 %s | keys mask 0x%02X | CPU %u MHz | heap %u, PSRAM %u",
             s_earlyOk ? "ok" : "FAILED", s_scanSummary,
             s_keysReady ? "ok" : "MISSING", epd_board_metalio_eink4_plus_tps_ok() ? "ok" : "not ready", s_lastMask,
             static_cast<unsigned>(getCpuFrequencyMhz()), static_cast<unsigned>(ESP.getFreeHeap()), static_cast<unsigned>(ESP.getFreePsram()));
@@ -88,12 +89,12 @@ bool earlyBegin() {
 
 void begin() {
   if (plus_i2c_begin() != ESP_OK) {
-    LOG_ERR("PLUS", "I2C bus init failed");
+    ESP_LOGE("PLUS", "I2C bus init failed");
     return;
   }
   scanBus();
   s_keysReady = epd_board_metalio_eink4_plus_ioexp_ok();
-  LOG_INF("PLUS", "TCA9555 %s, TPS65185 %s, CPU %u MHz", s_keysReady ? "ok" : "MISSING",
+  ESP_LOGE("PLUS", "TCA9555 %s, TPS65185 %s, CPU %u MHz", s_keysReady ? "ok" : "MISSING",
           epd_board_metalio_eink4_plus_tps_ok() ? "ok" : "not ready", static_cast<unsigned>(getCpuFrequencyMhz()));
   InputManager::setButtonHook(keyHook);
   xTaskCreate(diagTask, "plus_diag", 4096, nullptr, 1, nullptr);

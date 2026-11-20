@@ -10,6 +10,9 @@
 
 #include <esp_log.h>
 #include <esp_timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
 
 #include <cstring>
 
@@ -72,6 +75,38 @@ void finishOverlayMsb(const uint8_t* base, const uint8_t* msb, size_t srcBytes, 
   }
 }
 
+// epd_init() allocates the LCD peripheral interrupts on the calling core. The
+// EOF handler refills bounce buffers in ISR context, and EPDiy pins render
+// worker 1 to core 1. CrossNext calls display.begin() from Arduino's loopTask,
+// pinned to core 1, so the ISR load landed on worker 1's core and every refresh
+// underran at the same row (fault 0x01b50101: row 437, worker 1, not ready).
+// The vendor app, RickyOS-Plus and the stage-1 smoke test all init from core 0.
+struct InitOnCore0 {
+  SemaphoreHandle_t done;
+  bool ok;
+};
+
+void initOnCore0Task(void* arg) {
+  auto* init = static_cast<InitOnCore0*>(arg);
+  init->ok = MetalioEpd_Init();
+  xSemaphoreGive(init->done);
+  vTaskDelete(nullptr);
+}
+
+bool initPanelOnCore0() {
+  InitOnCore0 init = {xSemaphoreCreateBinary(), false};
+  if (!init.done) return MetalioEpd_Init();
+  if (xTaskCreatePinnedToCore(initOnCore0Task, "plus_epd_init", 8192, &init, configMAX_PRIORITIES - 2, nullptr, 0) !=
+      pdPASS) {
+    vSemaphoreDelete(init.done);
+    ESP_LOGE(TAG, "could not start init task on core 0; initializing on core %d", xPortGetCoreID());
+    return MetalioEpd_Init();
+  }
+  xSemaphoreTake(init.done, portMAX_DELAY);
+  vSemaphoreDelete(init.done);
+  return init.ok;
+}
+
 enum class Optical : uint8_t { Unknown, Bw, Gray };
 
 class MetalioPlusDriver final : public PanelDriver {
@@ -83,7 +118,7 @@ class MetalioPlusDriver final : public PanelDriver {
 
   void begin(EpdBus&) override {
     overlayStage_ = 0;
-    ready_ = MetalioEpd_Init();
+    ready_ = initPanelOnCore0();
     state_ = Optical::Unknown;
     if (!ready_) ESP_LOGE(TAG, "panel initialization failed (TPS65185 not ready)");
   }
@@ -167,7 +202,7 @@ class MetalioPlusDriver final : public PanelDriver {
       }
     }
     epd_poweroff();  // TPS rails are only needed while the waveform runs.
-    ESP_LOGI(TAG, "refresh mode=%d full=%d clean=%d result=0x%x ms=%lld", static_cast<int>(waveform), full, clean,
+    ESP_LOGE(TAG, "diag refresh mode=%d full=%d clean=%d result=0x%x ms=%lld", static_cast<int>(waveform), full, clean,
              static_cast<unsigned>(result), static_cast<long long>((esp_timer_get_time() - started) / 1000));
     return result;
   }
