@@ -36,6 +36,15 @@ void HalPowerManager::setPowerSaving(bool enabled) {
   if (normalFreq <= 0) {
     return;  // invalid state
   }
+#if FREEINK_DEVICE_METALIO_PLUS
+  // The Plus panel is fed by the CPU in real time (EPDiy): dropping to
+  // LOW_POWER_FREQ while the render task refreshes starves the LCD line buffer
+  // ("line buffer underrun", refresh aborted with 0x400 -- seen on hardware).
+  // RickyOS-Plus also blocks idle downclocking while the panel is busy. Keep
+  // full speed until the driver can hold a lock across refreshes.
+  (void)enabled;
+  return;
+#endif
 
   auto wifiMode = WiFi.getMode();
   if (wifiMode != WIFI_MODE_NULL) {
