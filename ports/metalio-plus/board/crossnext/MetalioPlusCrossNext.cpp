@@ -69,10 +69,10 @@ void scanBus() {
 void diagTask(void*) {
   for (int i = 0; i < 6; ++i) {
     vTaskDelay(pdMS_TO_TICKS(20000));
-    LOG_INF("PLUS", "diag: early bus %s | %s | TCA9555 %s | TPS65185 %s | keys mask 0x%02X | heap %u, PSRAM %u",
+    LOG_INF("PLUS", "diag: early bus %s | %s | TCA9555 %s | TPS65185 %s | keys mask 0x%02X | CPU %u MHz | heap %u, PSRAM %u",
             s_earlyOk ? "ok" : "FAILED", s_scanSummary,
             s_keysReady ? "ok" : "MISSING", epd_board_metalio_eink4_plus_tps_ok() ? "ok" : "not ready", s_lastMask,
-            static_cast<unsigned>(ESP.getFreeHeap()), static_cast<unsigned>(ESP.getFreePsram()));
+            static_cast<unsigned>(getCpuFrequencyMhz()), static_cast<unsigned>(ESP.getFreeHeap()), static_cast<unsigned>(ESP.getFreePsram()));
   }
   vTaskDelete(nullptr);
 }
@@ -93,8 +93,8 @@ void begin() {
   }
   scanBus();
   s_keysReady = epd_board_metalio_eink4_plus_ioexp_ok();
-  LOG_INF("PLUS", "TCA9555 %s, TPS65185 %s", s_keysReady ? "ok" : "MISSING",
-          epd_board_metalio_eink4_plus_tps_ok() ? "ok" : "not ready");
+  LOG_INF("PLUS", "TCA9555 %s, TPS65185 %s, CPU %u MHz", s_keysReady ? "ok" : "MISSING",
+          epd_board_metalio_eink4_plus_tps_ok() ? "ok" : "not ready", static_cast<unsigned>(getCpuFrequencyMhz()));
   InputManager::setButtonHook(keyHook);
   xTaskCreate(diagTask, "plus_diag", 4096, nullptr, 1, nullptr);
 }
