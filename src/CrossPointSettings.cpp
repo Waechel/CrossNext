@@ -526,6 +526,11 @@ ReaderRenderSpec CrossPointSettings::readerRenderSpec(const uint16_t viewportWid
 float CrossPointSettings::getReaderLineCompression() const { return readerlinespacing::multiplier(lineSpacing); }
 
 unsigned long CrossPointSettings::getSleepTimeoutMs() const {
+#if FREEINK_DEVICE_METALIO_PLUS
+  // Bring-up: the Plus power key sits on the TCA9555 and cannot wake the chip
+  // from deep sleep yet, so a sleeping Plus would look dead. Never auto-sleep.
+  return 0UL;
+#endif
   if (sleepTimeoutMinutes >= SLEEP_TIMEOUT_NEVER_MINUTES) return 0UL;
   const uint8_t minutes =
       std::clamp(sleepTimeoutMinutes, MIN_SLEEP_TIMEOUT_MINUTES, static_cast<uint8_t>(SLEEP_TIMEOUT_NEVER_MINUTES - 1));

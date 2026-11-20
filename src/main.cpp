@@ -1,3 +1,6 @@
+#if FREEINK_DEVICE_METALIO_PLUS
+#include <MetalioPlusCrossNext.h>
+#endif
 #include <Arduino.h>
 #include <BlePageTurner.h>
 #include <BoardConfig.h>
@@ -723,6 +726,10 @@ void setupDisplayAndFonts(bool seamless = false) {
 #endif
 
   display.begin(seamless);
+#if FREEINK_DEVICE_METALIO_PLUS
+  // The panel driver just brought up the Plus board (I2C, TCA9555, TPS65185).
+  metalio_plus::begin();
+#endif
   renderer.begin();
   activityManager.begin();
   LOG_DBG("MAIN", "Display initialized");

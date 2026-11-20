@@ -15,7 +15,8 @@
       "+<bus/>",
       "+<display/>",
       "-<display/output_common/lut.S>",
-      "+<sd_hold_stub.c>"
+      "+<sd_hold_stub.c>",
+      "+<crossnext/>"
     ],
     "flags": [
       "-Wno-missing-field-initializers",
