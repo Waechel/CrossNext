@@ -145,8 +145,8 @@ extern "C" void metalio_plus_touch_key(int rawX, bool down) {
   using metalio_plus::s_touchKeyMask;
   uint8_t mask = 0;
   if (down && rawX >= 0) {
-    if (rawX < 150) mask = 1u << InputManager::BTN_BACK;        // orange dot: back/home
-    else if (rawX < 250) mask = 1u << InputManager::BTN_LEFT;   // left pill: previous
+    if (rawX < 165) mask = 1u << InputManager::BTN_BACK;        // orange dot: back/home
+    else if (rawX < 255) mask = 1u << InputManager::BTN_LEFT;   // left pill: previous
     else mask = 1u << InputManager::BTN_RIGHT;                  // right pill: next
   }
   if (mask != s_touchKeyMask) ESP_LOGE("PLUS", "diag cover key x=%d mask=0x%02X", rawX, mask);

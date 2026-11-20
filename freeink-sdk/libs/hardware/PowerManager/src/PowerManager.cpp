@@ -5,6 +5,7 @@
 #include <driver/gpio.h>
 #include <esp_sleep.h>
 #include <esp_system.h>
+#include <esp_task_wdt.h>
 #include <soc/soc_caps.h>
 #if FREEINK_DEVICE_WS397
 #include <Axp2101.h>
@@ -141,9 +142,26 @@ void PowerManager::deepSleepUntilPowerButtonOrTimer(const uint64_t micros) {
 
 void PowerManager::deepSleep() {
 #if FREEINK_DEVICE_METALIO_PLUS
-  // Bring-up: no wake source on the Plus yet (power key is on the TCA9555,
-  // whose INT is shared with the IMU). Restart instead of sleeping forever.
-  esp_restart();
+  // Lock: the sleep screen is already drawn and the panel powered off. Wait in
+  // light sleep for the BOOT key (GPIO61, the Plus's power/lock key in
+  // CrossNext), then restart into the normal boot path. Deep-sleep wake on
+  // GPIO61 is not verified on the S31 yet; light sleep wakes from any GPIO.
+  {
+    const gpio_num_t key = static_cast<gpio_num_t>(BoardConfig::ACTIVE.input.power);
+    esp_task_wdt_delete(nullptr);
+    pinMode(key, INPUT_PULLUP);
+    while (digitalRead(key) == LOW) delay(10);  // let go of the press that locked
+    delay(50);
+    gpio_wakeup_enable(key, GPIO_INTR_LOW_LEVEL);
+    esp_sleep_enable_gpio_wakeup();
+    for (;;) {
+      esp_light_sleep_start();
+      if (digitalRead(key) == LOW) break;
+    }
+    gpio_wakeup_disable(key);
+    while (digitalRead(key) == LOW) delay(10);  // release before booting
+    esp_restart();
+  }
 #endif
   esp_sleep_config_gpio_isolate();
   // Chips that hold single IOs through deep sleep (C61, S31) have no global

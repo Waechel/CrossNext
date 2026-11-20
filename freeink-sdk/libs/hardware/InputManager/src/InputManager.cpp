@@ -2242,7 +2242,7 @@ void InputManager::pollFt6336u(const unsigned long now) {
       const uint8_t ev = (data[3] >> 6) & 0x03;
       const uint16_t rx = (static_cast<uint16_t>(data[3] & 0x0F) << 8) | data[4];
       const uint16_t ry = (static_cast<uint16_t>(data[5] & 0x0F) << 8) | data[6];
-      if (points > 0 && ev != 1 && ry >= 1400 && ry < 1800) {
+      if (points > 0 && ev != 1 && ry >= 1250) {
         // Cover key below the panel: a key, never a screen touch.
         metalio_plus_touch_key(rx, true);
         return;
